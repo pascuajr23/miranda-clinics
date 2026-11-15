@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miranda Clinics Queue</title>
+    <link rel="stylesheet" href="/original.css" />
+    <link rel="icon" href="/assets/logo-only.ico" type="image/x-icon" />
+    <style>
+      /* More rooms than the original two: 3 across on wide screens. */
+      @media (min-width: 901px) { .rooms.three { grid-template-columns: repeat(3, 1fr); } }
+    </style>
+  </head>
+  <body class="queue-page">
+    <div class="container">
+      <header class="site-header scrolled">
+        <a href="/" class="brand">
+          <img src="/assets/logo-only.png" alt="Miranda Clinics logo" class="brand-logo" />
+          <span class="brand-text">Miranda Clinics</span>
+        </a>
+        <nav class="nav-links">
+          <a href="/#about">About</a>
+          <a href="/#services">Services</a>
+          <a href="/#schedule">Schedule</a>
+          <a href="/#contact">Contact</a>
+        </nav>
+      </header>
+
+      <main>
+        <div class="rooms" id="queueRoot"></div>
+      </main>
+
+      <footer>
+        <h1>Now Serving</h1>
+        <p>Please proceed when your number is displayed.</p>
+      </footer>
+    </div>
+
+    <script>
+      const queueRoot = document.getElementById('queueRoot');
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+      // Room colour setting → the original site's palette.
+      const COLORS = { blue: '#0d6efd', green: '#16a34a', purple: '#7c3aed', orange: '#ea580c' };
+
+      async function loadQueue() {
+        try {
+          const rooms = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
+          queueRoot.classList.toggle('many', rooms.length > 3); // two rows: smaller numbers
+          queueRoot.classList.toggle('three', rooms.length === 3 || rooms.length > 4); // 4 rooms stay 2x2
+          queueRoot.innerHTML = rooms.map((r) => {
+            const color = COLORS[r.color] || COLORS.blue;
+            return `
+            <div class="room-card">
+              <div class="room-header">
+                <div class="room-name" style="color:${color}">${esc((r.department || r.name).toUpperCase())}</div>
+                <div class="status ${r.doctorIn ? 'status-in' : 'status-out'}">${r.doctorIn ? 'Doctor is IN' : 'Doctor is OUT'}</div>
+              </div>
+              <div class="info"><strong style="color:${color}">${esc(r.doctor || r.name)}</strong></div>
+              <div class="serving">
+                <small>CURRENTLY SERVING</small>
+                <div class="queue-number" style="color:${color}">${String(r.number).padStart(3, '0')}</div>
+              </div>
+            </div>`;
+          }).join('') || '<p>No rooms are open.</p>';
+        } catch (error) {
+          console.error(error); // keep the last numbers on screen
+        }
+      }
+
+      loadQueue();
+      setInterval(loadQueue, 2000);
+    </script>
+  </body>
+</html>

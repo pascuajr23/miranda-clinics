@@ -1,0 +1,6 @@
+data/
+node_modules/
+.env
+.DS_Store
+# Snapshot of the old site: its auth.js contains the old live admin password. Never publish it.
+original/
