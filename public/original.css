@@ -696,7 +696,7 @@ main { margin: 24px auto 32px; }
 .doctor-status-label { white-space: nowrap; }
 
 /* TV / laptop queue display: exactly one screen, rooms fill it, numbers scale with screen height. */
-@media (min-width: 601px) {
+@media (min-width: 901px) {
   body.queue-page .container { height: 100vh; min-height: 0; }
   body.queue-page main { display: flex; flex-direction: column; min-height: 0; margin: 3vh auto; padding-bottom: 0; }
   body.queue-page .rooms { flex: 1; min-height: 0; grid-auto-rows: 1fr; }
@@ -720,7 +720,7 @@ main { margin: 24px auto 32px; }
 }
 
 /* Queue display with two rows of rooms (4+): tighter spacing so every card fits on laptops too. */
-@media (min-width: 601px) {
+@media (min-width: 901px) {
   body.queue-page .rooms.many { gap: 2vh; }
   body.queue-page .rooms.many .room-card { padding: 1.6vh 2vh; }
   body.queue-page .rooms.many .room-header { margin-bottom: 0.6vh; }
@@ -787,11 +787,13 @@ body.control-page .site-header { position: sticky; }
 /* Queue display: never crop when the window is resized. Columns may shrink below their content,
    and numbers follow the window width as well as its height. */
 body.queue-page .rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 600px) { body.queue-page .rooms { grid-template-columns: minmax(0, 1fr); } }
-@media (min-width: 601px) {
+@media (max-width: 900px) { body.queue-page .rooms { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 901px) {
   body.queue-page .rooms.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   body.queue-page .queue-number { font-size: min(clamp(90px, 18vh, 260px), 11vw); }
   body.queue-page .rooms.three .queue-number { font-size: min(clamp(72px, 16vh, 220px), 7vw); }
   body.queue-page .rooms.many .queue-number { font-size: min(clamp(48px, 11vh, 180px), 7vw); }
-  body.queue-page .room-name, body.queue-page .info strong { overflow-wrap: anywhere; }
 }
+
+/* Long department names wrap between words; the status pill drops below when there is no room. */
+body.queue-page .room-header { flex-wrap: wrap; }
