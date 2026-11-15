@@ -795,5 +795,7 @@ body.queue-page .rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.queue-page .rooms.many .queue-number { font-size: min(clamp(48px, 11vh, 180px), 7vw); }
 }
 
-/* Long department names wrap between words; the status pill drops below when there is no room. */
-body.queue-page .room-header { flex-wrap: wrap; }
+/* Doctor in/out pill always top right; a long department name wraps (between words) beside it. */
+body.queue-page .room-header { flex-wrap: nowrap; align-items: flex-start; }
+body.queue-page .room-name { flex: 1; min-width: 0; }
+body.queue-page .room-header .status { flex: none; }
