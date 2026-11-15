@@ -21,30 +21,62 @@ All configuration comes from environment variables. Copy `.env.example` to `.env
 
 To change the login, change the variables and restart. Rooms and numbers are saved in `DATA_FILE`; on first start it holds the two original rooms (Dr. Kenneth / Dr. Kath). Add, rename or remove rooms from `/control`.
 
-## Run locally
+## Run without Docker
 
 ```bash
 cp .env.example .env   # then set ADMIN_PASSWORD
 npm start
 ```
 
-## Docker
+## Run with Docker Compose
 
-Every push to `main` (and every `v*` tag) runs the tests, builds the image and pushes it to GitHub Container Registry: `ghcr.io/<your-github-user>/<repo>:latest` (also tagged with the commit SHA). See `.github/workflows/docker.yml`. The first time, the package is private: make it public under GitHub → Packages, or log in on the server with `docker login ghcr.io`.
+On the server, make a folder with two files.
 
-Run it on the server, keeping the queue data in a named volume so it survives updates:
+`docker-compose.yml`:
 
-```bash
-docker run -d --name miranda-clinics --restart unless-stopped \
-  -p 3000:3000 \
-  -e ADMIN_USER=admin -e ADMIN_PASSWORD='your-long-password' \
-  -v miranda-data:/app/data \
-  ghcr.io/<your-github-user>/<repo>:latest
+```yaml
+services:
+  miranda-clinics:
+    image: ghcr.io/pascuajr23/miranda-clinics:latest
+    container_name: miranda-clinics
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+    volumes:
+      - miranda-data:/app/data
+
+volumes:
+  miranda-data:
 ```
 
-Or with an env file kept only on the server: replace the two `-e` flags with `--env-file /path/to/miranda.env`.
+`.env` (keep it private):
 
-Update to a new image: `docker pull …:latest`, then remove and re-run the container with the same volume. Put Caddy (or another HTTPS proxy) in front, pointing at port 3000. The login cookie is marked Secure when the proxy sends `X-Forwarded-Proto: https` (Caddy does by default).
+```bash
+ADMIN_USER=admin
+ADMIN_PASSWORD=your-long-password
+```
+
+Then start it:
+
+```bash
+docker compose up -d
+```
+
+The site is then on port 3000 (set `PORT` in `.env` to change it). Queue numbers and rooms live in the `miranda-data` volume, so they survive updates.
+
+| Task | Command |
+|---|---|
+| Update to the newest image | `docker compose pull && docker compose up -d` |
+| Change the login | edit `.env`, then `docker compose up -d` |
+| View logs | `docker compose logs -f` |
+| Stop | `docker compose down` (data is kept) |
+
+The image `ghcr.io/pascuajr23/miranda-clinics:latest` is built and published by GitHub Actions on every push to `main` (`.github/workflows/docker.yml`). If the package is private, run `docker login ghcr.io` on the server first, or make it public under GitHub → Packages.
+
+Put Caddy (or another HTTPS proxy) in front, pointing at port 3000. The login cookie is marked Secure when the proxy sends `X-Forwarded-Proto: https` (Caddy does by default).
 
 `original/` (a snapshot of the old site, whose `auth.js` holds the old admin password) is excluded from git and the image.
 
