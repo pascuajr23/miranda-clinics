@@ -14,7 +14,7 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html' };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
 const EDITABLE = ['name', 'department', 'doctor', 'number', 'doctorIn', 'color'];
-const COLORS = ['blue', 'green', 'purple', 'orange']; // must match the .room-color-* classes in styles.css
+const COLORS = ['blue', 'green', 'purple', 'orange']; // must match the colour lists in public/queue.html and public/control.js
 
 // Same two rooms the old site had, so the TV shows the same thing on first boot.
 const SEED = [

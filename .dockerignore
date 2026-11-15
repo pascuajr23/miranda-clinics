@@ -2,10 +2,12 @@
 .github
 .env
 .env.*
-!.env.example
 data
 node_modules
 original
 .claude
 .DS_Store
 *.test.js
+package.json
+public/index.redesign.html
+public/styles.css

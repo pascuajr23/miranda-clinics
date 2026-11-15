@@ -6,7 +6,7 @@ ENV NODE_ENV=production \
     DATA_FILE=/app/data/rooms.json
 
 WORKDIR /app
-COPY package.json server.js ./
+COPY server.js ./
 COPY public ./public
 
 # Queue data lives in a volume so it survives image updates; run as the unprivileged "node" user.

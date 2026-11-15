@@ -1,7 +1,17 @@
-data/
-node_modules/
+# Secrets and runtime data
 .env
+data/
+
+# Local-only files
+.claude/
 .DS_Store
+node_modules/
+package.json
+.env.example
+
+# Unused backups of the old redesign
+public/index.redesign.html
+public/styles.css
+
 # Snapshot of the old site: its auth.js contains the old live admin password. Never publish it.
 original/
-.claude/
