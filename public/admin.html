@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Miranda Clinics Admin</title>
+    <link rel="stylesheet" href="/original.css" />
+    <link rel="icon" href="/assets/logo-only.ico" type="image/x-icon" />
+    <style>
+      .go-control { display: block; padding: 2.2rem 1.5rem; border-radius: 24px; background: #133f54; color: #fff; text-decoration: none; text-align: center; box-shadow: 0 18px 40px rgba(19, 63, 84, 0.25); }
+      .go-control strong { display: block; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+      .go-control span { opacity: 0.8; }
+      .go-control:hover { background: #0f3446; }
+      .quick-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+      .admin-section { margin-top: 3rem; }
+      .admin-section > h2 { color: #0f172a; margin: 0 0 1rem; }
+      .room-card input[type="password"], .room-card textarea, .room-card select { width: 100%; padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid #d2dce8; background: #f8fafc; color: #102a43; font: inherit; }
+      .room-card textarea { min-height: 96px; resize: vertical; }
+      .room-card .hint { margin: 0.3rem 0 0; color: #64748b; font-size: 0.9rem; }
+      .room-card .checks { display: grid; gap: 6px; }
+      .room-card .checks label { display: flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
+      .room-card .checks input { width: auto; flex: none; margin: 0; }
+      .room-card .remove { background: transparent !important; color: #b33636 !important; box-shadow: none !important; }
+      .room-card .tag { font-size: 0.8rem; font-weight: 700; color: #133f54; background: #e6f0f5; padding: 2px 10px; border-radius: 999px; vertical-align: middle; }
+      .add-card { width: 100%; min-height: 120px; border: 2px dashed #9fb3c8; border-radius: 18px; background: transparent; font: inherit; font-weight: 700; color: #133f54; cursor: pointer; }
+      .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; background: #0f172a; color: #fff; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 2000; }
+      .toast.show { opacity: 1; }
+      .toast.error { background: #b33636; }
+      [data-admin-only] { display: none; }
+      body.is-admin [data-admin-only] { display: block; }
+    </style>
+  </head>
+  <body class="control-page">
+    <div class="login-overlay hidden" id="loginView">
+      <div class="login-card">
+        <h2>Access required</h2>
+        <p>Sign in to continue.</p>
+        <form id="loginForm">
+          <label for="usernameInput">Username</label>
+          <input id="usernameInput" name="username" type="text" autocomplete="username" autocapitalize="none" required />
+          <label for="passwordInput">Password</label>
+          <input id="passwordInput" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Login</button>
+          <p class="login-error" id="loginError" role="alert"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="app-content hidden" id="panelView">
+      <header class="site-header scrolled">
+        <a href="/" class="brand">
+          <img src="/assets/logo-only.png" alt="Miranda Clinics logo" class="brand-logo" />
+          <span class="brand-text">Miranda Clinics</span>
+        </a>
+        <div class="header-right">
+          <nav class="nav-links">
+            <a href="/#about">About</a>
+            <a href="/#services">Services</a>
+            <a href="/#schedule">Schedule</a>
+            <a href="/#contact">Contact</a>
+          </nav>
+          <button type="button" class="login-btn" id="logoutBtn">Logout</button>
+        </div>
+      </header>
+
+      <main class="page-shell">
+        <section class="panel">
+          <h1 id="greeting">Admin</h1>
+        </section>
+
+        <a class="go-control" href="/control">
+          <strong>Queue control</strong>
+          <span id="controlHint">Call numbers and set doctor in or out</span>
+        </a>
+        <div class="quick-links">
+          <a class="login-btn" href="/queue" target="_blank" rel="noopener">Open TV display</a>
+        </div>
+
+        <section class="admin-section" data-admin-only>
+          <h2>Announcement</h2>
+          <form class="room-card" id="announcementForm">
+            <label>Title</label><input type="text" name="title" maxlength="200" />
+            <label>Details</label><input type="text" name="details" maxlength="200" />
+            <label>Hours</label><input type="text" name="hours" maxlength="200" />
+            <button type="submit">Save announcement</button>
+          </form>
+        </section>
+
+        <section class="admin-section" data-admin-only>
+          <h2>Doctors</h2>
+          <div class="rooms-grid" id="doctors"></div>
+        </section>
+
+        <section class="admin-section" data-admin-only>
+          <h2>Users</h2>
+          <div class="rooms-grid" id="users"></div>
+        </section>
+
+        <section class="admin-section" id="passwordSection">
+          <h2>Your password</h2>
+          <form class="room-card" id="passwordForm">
+            <label>Current password</label><input type="password" name="current" autocomplete="current-password" required />
+            <label>New password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required />
+            <button type="submit">Change password</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="/common.js"></script>
+    <script src="/admin.js"></script>
+  </body>
+</html>

@@ -68,7 +68,7 @@ PORT=3000
 
 Save and close: press `Ctrl + O`, then `Enter`, then `Ctrl + X`.
 
-`ADMIN_USER` and `ADMIN_PASSWORD` are the control panel login. `PORT` is the port the site is served on.
+`ADMIN_USER` and `ADMIN_PASSWORD` are the super admin login. Sign in at `/admin` with it to add doctors, staff and doctor logins. `PORT` is the port the site is served on.
 
 **4. Log in to GitHub's image registry** (only needed if the image is private)
 
@@ -108,7 +108,7 @@ sudo docker compose pull
 sudo docker compose up -d
 ```
 
-Rooms and queue numbers are kept (they live in the `miranda-data` volume).
+Rooms, queue numbers, doctors and users are kept (they live in the `miranda-data` volume).
 
 ## Change the username or password
 

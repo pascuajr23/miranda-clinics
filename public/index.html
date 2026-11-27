@@ -25,7 +25,7 @@
           <a href="#schedule">Schedule</a>
           <a href="#contact">Contact</a>
         </nav>
-        <a href="/control" class="login-btn">Login</a>
+        <a href="/admin" class="login-btn">Login</a>
       </div>
     </header>
 
@@ -48,7 +48,7 @@
           <p class="eyebrow">About the clinic</p>
           <h2>Personalized care for every stage of life.</h2>
         </div>
-        <div class="intro-grid">
+        <div class="intro-grid" id="doctorCards">
           <article class="card card--doctor card--ken">
             <div class="doctor-photo"><img src="/assets/doctors/dr-ken.png" alt="Dr. Kenneth Miranda" width="377" height="611" loading="lazy" /></div>
             <h3>Dr. Kenneth Miranda</h3>
@@ -72,7 +72,7 @@
           <h2>Care tailored to each stage of life.</h2>
           <p class="section-copy">Choose the doctor that fits your needs and see the services available for every visit.</p>
         </div>
-        <div class="services-grid">
+        <div class="services-grid" id="serviceCards">
           <article class="doctor-service-card doctor-service-card--pediatrics">
             <div class="doctor-service-header">
               <div>
@@ -112,11 +112,11 @@
         <div class="schedule-card">
           <div>
             <p class="eyebrow">Announcements</p>
-            <h2>Open on sunday!</h2>
-            <p class="announcement-details">Laboratory - Urinalysis - Blood Chemistry - ECG</p>
-            <p class="announcement-hours">7:00 AM – 10:00 AM</p>
+            <h2 id="annTitle">Open on sunday!</h2>
+            <p class="announcement-details" id="annDetails">Laboratory - Urinalysis - Blood Chemistry - ECG</p>
+            <p class="announcement-hours" id="annHours">7:00 AM – 10:00 AM</p>
           </div>
-          <div class="schedule-list">
+          <div class="schedule-list" id="scheduleList">
             <div class="schedule-item">
               <strong>Queue Access</strong>
               <span>Use the live queue page for the current numbers being served.</span>
@@ -153,6 +153,37 @@
       const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 40);
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
+
+      // Doctors, schedules and the announcement come from the admin panel; the markup above is the fallback.
+      const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+      const lines = (s) => esc(s).replace(/\n/g, '<br />');
+      fetch('/api/site').then((r) => r.json()).then(({ doctors, announcement }) => {
+        const about = document.getElementById('doctorCards');
+        const family = about.lastElementChild.outerHTML;
+        about.innerHTML = doctors.map((d) => `
+          <article class="card card--doctor card--${d.color === 'green' ? 'kath' : 'ken'}">
+            ${d.photo ? `<div class="doctor-photo"><img src="${esc(d.photo)}" alt="${esc(d.name)}" loading="lazy" /></div>` : ''}
+            <h3>${esc(d.name)}</h3>
+            <p>${esc(d.bio)}</p>
+          </article>`).join('') + family;
+
+        document.getElementById('serviceCards').innerHTML = doctors.filter((d) => d.services.length).map((d) => `
+          <article class="doctor-service-card doctor-service-card--${d.color === 'green' ? 'pediatrics' : 'adult'}">
+            <div class="doctor-service-header">
+              <div><p class="doctor-label">${esc(d.label)}</p><h3>${esc(d.name)}</h3></div>
+              ${d.badge ? `<span class="doctor-badge">${esc(d.badge)}</span>` : ''}
+            </div>
+            <ul class="service-list">${d.services.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+          </article>`).join('');
+
+        const scheduled = doctors.filter((d) => d.schedule);
+        if (scheduled.length) document.getElementById('scheduleList').innerHTML = scheduled.map((d) => `
+          <div class="schedule-item"><strong>${esc(d.name)}</strong><span>${lines(d.schedule)}</span></div>`).join('');
+
+        document.getElementById('annTitle').textContent = announcement.title;
+        document.getElementById('annDetails').textContent = announcement.details;
+        document.getElementById('annHours').textContent = announcement.hours;
+      }).catch(() => {}); // keep the fallback content
     </script>
   </body>
 </html>

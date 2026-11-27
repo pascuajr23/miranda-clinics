@@ -8,37 +8,65 @@ const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'rooms.json');
+const SITE_FILE = path.join(path.dirname(DATA_FILE), 'site.json'); // doctors, users, announcement
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
-const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html' };
+const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html', '/admin': 'admin.html' };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
-const EDITABLE = ['name', 'department', 'doctor', 'number', 'doctorIn', 'color'];
+const EDITABLE = ['name', 'department', 'doctorId', 'number', 'doctorIn', 'color'];
+const QUEUE_FIELDS = ['number', 'doctorIn']; // all doctors and staff may change on their own rooms
+const ROLES = ['admin', 'staff', 'doctor']; // the env login is the super admin and is never stored
 const COLORS = ['blue', 'green', 'purple', 'orange']; // must match the colour lists in public/queue.html and public/control.js
 
 // Same two rooms the old site had, so the TV shows the same thing on first boot.
 const SEED = [
-  { id: 'room1', name: 'Room 1', department: 'Internal Medicine', doctor: 'Dr. Kenneth Miranda', number: 0, doctorIn: false, color: 'blue' },
-  { id: 'room2', name: 'Room 2', department: 'Pediatrics', doctor: 'Dr. Kath Miranda', number: 0, doctorIn: false, color: 'green' },
+  { id: 'room1', name: 'Room 1', department: 'Internal Medicine', doctorId: 'ken', number: 0, doctorIn: false, color: 'blue' },
+  { id: 'room2', name: 'Room 2', department: 'Pediatrics', doctorId: 'kath', number: 0, doctorIn: false, color: 'green' },
 ];
 
-function loadRooms() {
+// Dr. Ken and Dr. Kath are fixed: they can't be removed, and only their schedule can change.
+const SITE_SEED = {
+  doctors: [
+    { id: 'ken', fixed: true, name: 'Dr. Kenneth Miranda', label: 'Adult care', badge: 'Adults', color: 'blue', photo: '/assets/doctors/dr-ken.png',
+      bio: 'Internal medicine specialist offering comprehensive adult care, preventive visits, and chronic condition management.',
+      services: ['General Consultation', 'CardioPulmonary Clearance', 'Medical Certificates', 'Fit to Work', 'Adult Vaccines'], schedule: '' },
+    { id: 'kath', fixed: true, name: 'Dr. Kath Miranda', label: 'Pediatric care', badge: 'Children', color: 'green', photo: '/assets/doctors/dr-kath.png',
+      bio: 'Pediatrician providing gentle, child-focused care for routine checkups, growth tracking, and everyday health concerns.',
+      services: ['Well-baby/child checkup', 'Sick-baby/child checkup', 'Immunizations', 'Ear-piercing', 'Follow-ups'], schedule: '' },
+  ],
+  users: [],
+  announcement: { title: 'Open on sunday!', details: 'Laboratory - Urinalysis - Blood Chemistry - ECG', hours: '7:00 AM – 10:00 AM' },
+};
+
+function loadJson(file, seed) {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (error) {
     if (error.code !== 'ENOENT') throw error; // never silently replace a corrupt file with the seed
-    return structuredClone(SEED);
+    return structuredClone(seed);
   }
 }
 
-let rooms = loadRooms();
-
-function saveRooms() {
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  const tmp = `${DATA_FILE}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(rooms, null, 2));
-  fs.renameSync(tmp, DATA_FILE); // atomic swap so a crash mid-write can't corrupt the queue
+function saveJson(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.renameSync(tmp, file); // atomic swap so a crash mid-write can't corrupt the data
 }
+
+let rooms = loadJson(DATA_FILE, SEED);
+const site = loadJson(SITE_FILE, SITE_SEED);
+// Rooms saved before doctors existed only have a doctor name: link them to the matching doctor.
+for (const room of rooms) {
+  if (room.doctorId === undefined) room.doctorId = site.doctors.find((d) => d.name === room.doctor)?.id || '';
+  delete room.doctor;
+}
+
+const saveRooms = () => saveJson(DATA_FILE, rooms);
+const saveSite = () => saveJson(SITE_FILE, site);
+const doctorName = (id) => site.doctors.find((d) => d.id === id)?.name || '';
+const publicRoom = (r) => ({ ...r, doctor: doctorName(r.doctorId) });
 
 // shortcut: sessions live in memory, so a server restart logs everyone out; move to the data file if that becomes annoying.
 const sessions = new Map();
@@ -48,12 +76,30 @@ function sha(value) {
   return crypto.createHash('sha256').update(String(value)).digest();
 }
 
-function checkCredentials(user, password) {
-  if (!ADMIN_PASSWORD) return false;
-  const userOk = crypto.timingSafeEqual(sha(user), sha(ADMIN_USER));
-  const passOk = crypto.timingSafeEqual(sha(password), sha(ADMIN_PASSWORD));
-  return userOk && passOk;
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return `${salt}:${crypto.scryptSync(password, salt, 32).toString('hex')}`;
 }
+
+function passwordMatches(password, stored) {
+  const [salt, hash] = String(stored).split(':');
+  if (!salt || !hash) return false;
+  return crypto.timingSafeEqual(crypto.scryptSync(password, salt, 32), Buffer.from(hash, 'hex'));
+}
+
+const SUPER_ADMIN = { id: 'superadmin', username: ADMIN_USER, name: 'Super admin', role: 'admin', doctorIds: [], superAdmin: true };
+
+// Returns the user id for good credentials, or null.
+function checkCredentials(username, password) {
+  if (ADMIN_PASSWORD && crypto.timingSafeEqual(sha(username), sha(ADMIN_USER)) && crypto.timingSafeEqual(sha(password), sha(ADMIN_PASSWORD))) return SUPER_ADMIN.id;
+  const user = site.users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+  return user && passwordMatches(password, user.password) ? user.id : null;
+}
+
+const findUser = (id) => (id === SUPER_ADMIN.id ? SUPER_ADMIN : site.users.find((u) => u.id === id));
+const publicUser = ({ password, ...u }) => u;
+// Doctors see their own rooms, staff the rooms of the doctors they manage, admins everything.
+const canRunRoom = (user, room) => user.role === 'admin' || (room.doctorId && user.doctorIds.includes(room.doctorId));
 
 function tooManyAttempts(ip) {
   const entry = failedLogins.get(ip);
@@ -71,11 +117,12 @@ function getSession(req) {
   const match = /(?:^|;\s*)sid=([a-f0-9]{64})/.exec(req.headers.cookie || '');
   if (!match) return null;
   const session = sessions.get(match[1]);
-  if (!session || session.expiresAt < Date.now()) {
+  const user = session && findUser(session.userId); // a removed user is logged out at once
+  if (!session || session.expiresAt < Date.now() || !user) {
     sessions.delete(match[1]);
     return null;
   }
-  return { id: match[1], ...session };
+  return { id: match[1], ...session, user };
 }
 
 function send(res, status, body, headers = {}) {
@@ -89,7 +136,7 @@ function readJson(req) {
     let raw = '';
     req.on('data', (chunk) => {
       raw += chunk;
-      if (raw.length > 10_000) req.destroy();
+      if (raw.length > 20_000) req.destroy();
     });
     req.on('end', () => {
       try {
@@ -114,6 +161,8 @@ function validatePatch(input) {
       if (typeof value !== 'boolean') throw new Error('doctorIn must be true or false.');
     } else if (key === 'color') {
       if (!COLORS.includes(value)) throw new Error(`Color must be one of: ${COLORS.join(', ')}.`);
+    } else if (key === 'doctorId') {
+      if (value !== '' && !site.doctors.some((d) => d.id === value)) throw new Error('Unknown doctor.');
     } else if (typeof value !== 'string' || value.trim().length > 80) {
       throw new Error(`${key} must be text up to 80 characters.`);
     }
@@ -122,23 +171,83 @@ function validatePatch(input) {
   return patch;
 }
 
+function text(value, label, max = 80) {
+  if (typeof value !== 'string' || value.trim().length > max) throw new Error(`${label} must be text up to ${max} characters.`);
+  return value.trim();
+}
+
+function list(value, label) {
+  if (!Array.isArray(value) || value.length > 20) throw new Error(`${label} must be a list of up to 20 items.`);
+  return value.map((v) => text(v, label)).filter(Boolean);
+}
+
+function validateDoctor(input, doctor) {
+  const patch = {};
+  if ('schedule' in input) patch.schedule = text(input.schedule, 'Schedule', 400);
+  if (doctor?.fixed) return patch; // only the schedule of the two Mirandas can change
+  for (const key of ['name', 'label', 'badge', 'bio']) if (key in input) patch[key] = text(input[key], key, key === 'bio' ? 300 : 80);
+  if ('services' in input) patch.services = list(input.services, 'Services');
+  if ('color' in input) {
+    if (!COLORS.includes(input.color)) throw new Error(`Color must be one of: ${COLORS.join(', ')}.`);
+    patch.color = input.color;
+  }
+  if (patch.name === '') throw new Error('The doctor needs a name.');
+  return patch;
+}
+
+function validateUser(input, existing) {
+  const patch = {};
+  if ('name' in input) patch.name = text(input.name, 'Name');
+  if ('username' in input) {
+    patch.username = text(input.username, 'Username', 40);
+    if (!/^[\w.-]{3,40}$/.test(patch.username)) throw new Error('Username: 3 to 40 letters, numbers, dots or dashes.');
+    const taken = patch.username.toLowerCase() === ADMIN_USER.toLowerCase() ||
+      site.users.some((u) => u !== existing && u.username.toLowerCase() === patch.username.toLowerCase());
+    if (taken) throw new Error('That username is taken.');
+  }
+  if ('role' in input) {
+    if (!ROLES.includes(input.role)) throw new Error(`Role must be one of: ${ROLES.join(', ')}.`);
+    patch.role = input.role;
+  }
+  if ('doctorIds' in input) {
+    if (!Array.isArray(input.doctorIds) || !input.doctorIds.every((id) => site.doctors.some((d) => d.id === id))) throw new Error('Unknown doctor.');
+    patch.doctorIds = [...new Set(input.doctorIds)];
+  }
+  if ('password' in input && input.password !== '') patch.password = validNewPassword(input.password);
+  const role = patch.role || existing?.role;
+  const doctorIds = patch.doctorIds || existing?.doctorIds || [];
+  if (role === 'doctor' && doctorIds.length > 1) throw new Error('A doctor login belongs to one doctor.');
+  return patch;
+}
+
+function validNewPassword(password) {
+  if (typeof password !== 'string' || password.length < 8 || password.length > 200) throw new Error('Password must be at least 8 characters.');
+  return hashPassword(password);
+}
+
 async function handleApi(req, res, url) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
 
-  if (req.method === 'GET' && url.pathname === '/api/rooms') return send(res, 200, rooms);
+  if (req.method === 'GET' && url.pathname === '/api/rooms') return send(res, 200, rooms.map(publicRoom));
 
-  if (req.method === 'GET' && url.pathname === '/api/session') return send(res, 200, { loggedIn: Boolean(getSession(req)) });
+  if (req.method === 'GET' && url.pathname === '/api/site') return send(res, 200, { doctors: site.doctors, announcement: site.announcement });
+
+  if (req.method === 'GET' && url.pathname === '/api/session') {
+    const session = getSession(req);
+    return send(res, 200, { loggedIn: Boolean(session), user: session && publicUser(session.user) });
+  }
 
   if (req.method === 'POST' && url.pathname === '/api/login') {
     if (tooManyAttempts(ip)) return send(res, 429, { error: 'Too many attempts. Try again in 15 minutes.' });
     const { username, password } = await readJson(req);
-    if (!checkCredentials(username || '', password || '')) {
+    const userId = checkCredentials(String(username || '').trim(), String(password || ''));
+    if (!userId) {
       recordFailure(ip);
-      return send(res, 401, { error: ADMIN_PASSWORD ? 'Incorrect username or password.' : 'ADMIN_PASSWORD is not set on the server.' });
+      return send(res, 401, { error: ADMIN_PASSWORD || site.users.length ? 'Incorrect username or password.' : 'ADMIN_PASSWORD is not set on the server.' });
     }
     failedLogins.delete(ip);
     const sid = crypto.randomBytes(32).toString('hex');
-    sessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS });
+    sessions.set(sid, { userId, expiresAt: Date.now() + SESSION_TTL_MS });
     const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
     return send(res, 200, { ok: true }, { 'Set-Cookie': `sid=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}${secure}` });
   }
@@ -149,26 +258,110 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true }, { 'Set-Cookie': 'sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' });
   }
 
-  // Everything below changes the queue and needs a logged-in admin.
-  if (!getSession(req)) return send(res, 401, { error: 'Please log in again.' });
+  // Everything below needs a login.
+  const session = getSession(req);
+  if (!session) return send(res, 401, { error: 'Please log in again.' });
+  const { user } = session;
+  const isAdmin = user.role === 'admin';
+  const forbidden = () => send(res, 403, { error: 'Your login can’t do that.' });
+
+  if (req.method === 'POST' && url.pathname === '/api/password') {
+    if (user.superAdmin) return send(res, 400, { error: 'The super admin password is set in the server settings (.env).' });
+    const { current, password } = await readJson(req);
+    if (!passwordMatches(String(current || ''), user.password)) return send(res, 400, { error: 'Your current password is wrong.' });
+    user.password = validNewPassword(password);
+    saveSite();
+    return send(res, 200, { ok: true });
+  }
+
+  // Room queue controls: doctors and staff on their own rooms, admins on all.
+  const roomMatch = /^\/api\/rooms\/([\w-]+)$/.exec(url.pathname);
+  if (roomMatch && req.method === 'PATCH') {
+    const room = rooms.find((r) => r.id === roomMatch[1]);
+    if (!room) return send(res, 404, { error: 'Room not found.' });
+    if (!canRunRoom(user, room)) return forbidden();
+    const patch = validatePatch(await readJson(req));
+    if (!isAdmin && Object.keys(patch).some((k) => !QUEUE_FIELDS.includes(k))) return forbidden();
+    Object.assign(room, patch);
+    saveRooms();
+    return send(res, 200, publicRoom(room));
+  }
+
+  // Everything below is admin only.
+  if (!isAdmin) return forbidden();
+
+  if (req.method === 'PATCH' && url.pathname === '/api/announcement') {
+    const input = await readJson(req);
+    for (const key of ['title', 'details', 'hours']) if (key in input) site.announcement[key] = text(input[key], key, 200);
+    saveSite();
+    return send(res, 200, site.announcement);
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/doctors') {
+    const doctor = { id: crypto.randomUUID(), fixed: false, name: 'New doctor', label: '', badge: '', color: 'blue', photo: '', bio: '', services: [], schedule: '' };
+    Object.assign(doctor, validateDoctor(await readJson(req)));
+    site.doctors.push(doctor);
+    saveSite();
+    return send(res, 201, doctor);
+  }
+
+  const doctorMatch = /^\/api\/doctors\/([\w-]+)$/.exec(url.pathname);
+  if (doctorMatch) {
+    const doctor = site.doctors.find((d) => d.id === doctorMatch[1]);
+    if (!doctor) return send(res, 404, { error: 'Doctor not found.' });
+    if (req.method === 'PATCH') {
+      Object.assign(doctor, validateDoctor(await readJson(req), doctor));
+      saveSite();
+      return send(res, 200, doctor);
+    }
+    if (req.method === 'DELETE') {
+      if (doctor.fixed) return send(res, 400, { error: `${doctor.name} can’t be removed.` });
+      site.doctors = site.doctors.filter((d) => d !== doctor);
+      for (const u of site.users) u.doctorIds = u.doctorIds.filter((id) => id !== doctor.id);
+      for (const r of rooms) if (r.doctorId === doctor.id) r.doctorId = '';
+      saveSite();
+      saveRooms();
+      return send(res, 204);
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/users') return send(res, 200, [publicUser(SUPER_ADMIN), ...site.users.map(publicUser)]);
+
+  if (req.method === 'POST' && url.pathname === '/api/users') {
+    const input = await readJson(req);
+    if (!input.username || !input.password) return send(res, 400, { error: 'A username and password are required.' });
+    const newUser = { id: crypto.randomUUID(), name: '', role: 'staff', doctorIds: [], ...validateUser(input) };
+    site.users.push(newUser);
+    saveSite();
+    return send(res, 201, publicUser(newUser));
+  }
+
+  const userMatch = /^\/api\/users\/([\w-]+)$/.exec(url.pathname);
+  if (userMatch) {
+    const target = site.users.find((u) => u.id === userMatch[1]);
+    if (!target) return send(res, userMatch[1] === SUPER_ADMIN.id ? 400 : 404, { error: userMatch[1] === SUPER_ADMIN.id ? 'The super admin is set in the server settings (.env).' : 'User not found.' });
+    if (req.method === 'PATCH') {
+      Object.assign(target, validateUser(await readJson(req), target));
+      saveSite();
+      return send(res, 200, publicUser(target));
+    }
+    if (req.method === 'DELETE') {
+      site.users = site.users.filter((u) => u !== target);
+      saveSite();
+      return send(res, 204);
+    }
+  }
 
   if (req.method === 'POST' && url.pathname === '/api/rooms') {
     const patch = validatePatch(await readJson(req));
-    const room = { id: crypto.randomUUID(), name: `Room ${rooms.length + 1}`, department: '', doctor: '', number: 0, doctorIn: false, color: 'blue', ...patch };
+    const room = { id: crypto.randomUUID(), name: `Room ${rooms.length + 1}`, department: '', doctorId: '', number: 0, doctorIn: false, color: 'blue', ...patch };
     rooms.push(room);
     saveRooms();
-    return send(res, 201, room);
+    return send(res, 201, publicRoom(room));
   }
 
-  const match = /^\/api\/rooms\/([\w-]+)$/.exec(url.pathname);
-  const room = match && rooms.find((r) => r.id === match[1]);
-  if (match && !room) return send(res, 404, { error: 'Room not found.' });
-
-  if (room && req.method === 'PATCH') {
-    Object.assign(room, validatePatch(await readJson(req)));
-    saveRooms();
-    return send(res, 200, room);
-  }
+  const room = roomMatch && rooms.find((r) => r.id === roomMatch[1]);
+  if (roomMatch && !room) return send(res, 404, { error: 'Room not found.' });
 
   if (room && req.method === 'DELETE') {
     rooms = rooms.filter((r) => r !== room);
@@ -201,7 +394,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 if (require.main === module) {
-  if (!ADMIN_PASSWORD) console.warn('ADMIN_PASSWORD is not set: nobody can log in to /control until it is.');
+  if (!ADMIN_PASSWORD) console.warn('ADMIN_PASSWORD is not set: the super admin can’t log in until it is.');
   server.listen(PORT, () => console.log(`Miranda Clinics running on http://localhost:${PORT}`));
 }
 

@@ -33,6 +33,26 @@ test('queue API: public read, protected writes, add/edit/delete rooms', async ()
     assert.strictEqual(added.name, 'Room 3');
     assert.strictEqual((await fetch(`${base}/api/rooms/${added.id}`, { method: 'DELETE', headers: { cookie } })).status, 204);
 
+    // Roles: a doctor runs only their own room, and only the queue fields.
+    const asUser = async (username, password) => (await fetch(`${base}/api/login`, json('POST', { username, password }))).headers.get('set-cookie')?.split(';')[0];
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'drkath', password: 'kath-pass-1', role: 'doctor', doctorIds: ['kath'] }, cookie))).status, 201);
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'admin', password: 'whatever-1' }, cookie))).status, 400);
+    const kath = await asUser('drkath', 'kath-pass-1');
+    assert.ok(kath);
+    assert.strictEqual((await fetch(`${base}/api/rooms/room2`, json('PATCH', { number: 3 }, kath))).status, 200);
+    assert.strictEqual((await fetch(`${base}/api/rooms/room1`, json('PATCH', { number: 3 }, kath))).status, 403);
+    assert.strictEqual((await fetch(`${base}/api/rooms/room2`, json('PATCH', { department: 'X' }, kath))).status, 403);
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'sneaky', password: 'sneaky-pass' }, kath))).status, 403);
+    assert.strictEqual((await fetch(`${base}/api/rooms/room2`, json('PATCH', { number: 0 }, cookie))).status, 200);
+
+    // The two Mirandas stay: no removal, and only their schedule changes.
+    assert.strictEqual((await fetch(`${base}/api/doctors/ken`, { method: 'DELETE', headers: { cookie } })).status, 400);
+    const ken = await (await fetch(`${base}/api/doctors/ken`, json('PATCH', { name: 'Someone else', schedule: 'Mon 9-12' }, cookie))).json();
+    assert.deepStrictEqual([ken.name, ken.schedule], ['Dr. Kenneth Miranda', 'Mon 9-12']);
+    const site = await (await fetch(`${base}/api/site`)).json();
+    assert.deepStrictEqual(site.doctors.map((d) => d.id), ['ken', 'kath']);
+    assert.ok(!JSON.stringify(await (await fetch(`${base}/api/users`, { headers: { cookie } })).json()).includes('password'));
+
     const saved = JSON.parse(fs.readFileSync(process.env.DATA_FILE, 'utf8'));
     assert.deepStrictEqual(saved.map((r) => [r.id, r.number]), [['room1', 7], ['room2', 0]]);
   } finally {

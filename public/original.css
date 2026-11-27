@@ -118,6 +118,7 @@ body.control-page, body.queue-page {
 .announcement-details, .announcement-hours { color: var(--muted); }
 .schedule-list { display: grid; gap: 0.9rem; }
 .schedule-item { border-top: 1px solid #e5eef4; padding-top: 0.8rem; }
+.schedule-item strong { display: block; margin-bottom: 0.2rem; }
 .site-footer {
   background: #0f172a;
   color: white;
@@ -814,3 +815,16 @@ body.queue-page .room-header .status { flex: none; }
 .card--ken .doctor-photo { justify-content: flex-end; background: linear-gradient(180deg, #eef5fd, #dbe9fb); }
 .card--kath .doctor-photo { justify-content: flex-start; background: linear-gradient(180deg, #eef8f1, #d9f0e1); }
 @media (max-width: 640px) { .doctor-photo { height: 220px; } }
+
+/* Phones: every room at a glance. Name and pill on top, doctor left, number right. */
+@media (max-width: 600px) {
+  body.queue-page .rooms { gap: 12px; }
+  body.queue-page .room-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head head" "info serving"; column-gap: 12px; align-items: center; padding: 14px 16px; }
+  body.queue-page .room-header { grid-area: head; margin-bottom: 4px; }
+  body.queue-page .room-name { font-size: 14px; }
+  body.queue-page .info { grid-area: info; margin: 0; }
+  body.queue-page .info strong { font-size: 18px; }
+  body.queue-page .serving { grid-area: serving; margin: 0; padding: 6px 14px; }
+  body.queue-page .serving small { font-size: 10px; }
+  body.queue-page .queue-number, body.queue-page .rooms.many .queue-number { font-size: 48px; line-height: 1.05; margin: 0; }
+}

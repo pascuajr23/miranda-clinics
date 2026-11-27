@@ -20,21 +20,6 @@
     </style>
   </head>
   <body class="control-page">
-    <div class="login-overlay hidden" id="loginView">
-      <div class="login-card">
-        <h2>Access required</h2>
-        <p>Enter your admin credentials to continue.</p>
-        <form id="loginForm">
-          <label for="usernameInput">Username</label>
-          <input id="usernameInput" name="username" type="text" autocomplete="username" required />
-          <label for="passwordInput">Password</label>
-          <input id="passwordInput" name="password" type="password" autocomplete="current-password" required />
-          <button type="submit">Login</button>
-          <p class="login-error" id="loginError" role="alert"></p>
-        </form>
-      </div>
-    </div>
-
     <div class="app-content hidden" id="panelView">
       <header class="site-header scrolled">
         <a href="/" class="brand">
@@ -48,14 +33,14 @@
             <a href="/#schedule">Schedule</a>
             <a href="/#contact">Contact</a>
           </nav>
-          <button type="button" class="login-btn" id="logoutBtn">Logout</button>
+          <a class="login-btn" href="/admin">Admin</a>
         </div>
       </header>
 
       <main class="page-shell">
         <section class="panel">
-          <h1>Admin Control Panel</h1>
-          <p>Update queue numbers for each room</p>
+          <h1>Queue Control</h1>
+          <p id="panelHint">Update queue numbers for each room</p>
           <div class="panel-actions">
             <a class="login-btn" href="/queue" target="_blank" rel="noopener">Open TV display</a>
             <button type="button" class="login-btn" id="resetAllBtn">Reset all to 000</button>
@@ -68,6 +53,7 @@
 
     <div class="toast" id="toast" role="status"></div>
 
+    <script src="/common.js"></script>
     <script src="/control.js"></script>
   </body>
 </html>
