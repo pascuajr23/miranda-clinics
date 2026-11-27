@@ -12,6 +12,15 @@
       .room-message { margin-top: 0.6em; font-weight: 700; font-size: clamp(16px, 2.4vh, 32px); color: #b45309; text-align: center; }
       .closed-banner { margin: 12px auto 0; max-width: 1180px; padding: 0.8em 1.2em; border-radius: 14px; background: #fef3c7; color: #92400e; font-weight: 700; text-align: center; font-size: clamp(16px, 2.6vh, 34px); }
       .closed-banner[hidden] { display: none; }
+      /* Shown when the server can't be reached: the last numbers stay, but nobody trusts them blindly. */
+      .reconnecting { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1200;
+        display: flex; align-items: center; gap: 0.6em; padding: 0.6em 1.2em; border-radius: 999px; background: #b91c1c; color: #fff;
+        font-weight: 700; font-size: clamp(16px, 2.6vh, 36px); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25); }
+      .reconnecting[hidden] { display: none; }
+      .reconnecting::before { content: ""; width: 0.7em; height: 0.7em; border-radius: 50%; background: #fecaca; animation: blink 1.2s ease-in-out infinite; }
+      @keyframes blink { 50% { opacity: 0.25; } }
+      @media (prefers-reduced-motion: reduce) { .reconnecting::before { animation: none; } }
+      body.offline .queue-number { opacity: 0.55; }
     </style>
   </head>
   <body class="queue-page">
@@ -30,6 +39,7 @@
       </header>
 
       <p class="closed-banner" id="closedBanner" hidden></p>
+      <p class="reconnecting" id="reconnecting" role="status" hidden>Reconnecting… numbers may be out of date</p>
       <main>
         <div class="rooms" id="queueRoot"></div>
       </main>
@@ -46,10 +56,41 @@
       // Room colour setting → the original site's palette.
       const COLORS = { blue: '#0d6efd', green: '#15803d', purple: '#7c3aed', orange: '#c2410c' };
 
+      const reconnecting = document.getElementById('reconnecting');
+      let version = null; // the site version this page was loaded with
+      let lastBody = '';
+      let failures = 0;
+      // Old phones lack AbortSignal.timeout: give up on a hung request after 5 seconds either way.
+      function timeoutSignal(ms) {
+        if (window.AbortSignal && AbortSignal.timeout) return AbortSignal.timeout(ms);
+        if (!window.AbortController) return undefined;
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), ms);
+        return controller.signal;
+      }
+
+      // Holds the last numbers on screen but says so, after two missed checks in a row (about 4 seconds).
+      function setOffline(offline) {
+        reconnecting.hidden = !offline;
+        document.body.classList.toggle('offline', offline);
+      }
+
       async function loadQueue() {
         try {
+          // "no-cache" lets the browser ask "has it changed?" and get a tiny 304 reply when it hasn't.
+          const res = await fetch('/api/rooms', { cache: 'no-cache', signal: timeoutSignal(5000) });
+          if (!res.ok) throw new Error(`Server replied ${res.status}`);
+          failures = 0;
+          setOffline(false);
+          // A new version was deployed: reload to pick up the new page and styles.
+          const serverVersion = res.headers.get('X-App-Version');
+          if (version && serverVersion && serverVersion !== version) return location.reload();
+          if (!version) version = serverVersion;
+          const body = await res.text();
+          if (body === lastBody) return; // nothing changed: skip redrawing
+          lastBody = body;
           // Rooms without a doctor (spare rooms) stay off the screen.
-          const rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).filter((r) => r.doctorId);
+          const rooms = JSON.parse(body).filter((r) => r.doctorId);
           queueRoot.classList.toggle('two', rooms.length <= 2); // the usual day: big two-doctor layout
           queueRoot.classList.toggle('many', rooms.length > 3); // two rows: smaller numbers
           queueRoot.classList.toggle('three', rooms.length === 3 || rooms.length > 4); // 4 rooms stay 2x2
@@ -71,13 +112,14 @@
           }).join('') || '<p>No rooms are open.</p>';
         } catch (error) {
           console.error(error); // keep the last numbers on screen
+          if (++failures >= 2) setOffline(true);
         }
       }
 
       // Banner on days the clinic is closed (dates are clinic time, Asia/Manila).
       async function loadClosure() {
         try {
-          const { closures } = await (await fetch('/api/site', { cache: 'no-store' })).json();
+          const { closures } = await (await fetch('/api/site', { cache: 'no-cache', signal: timeoutSignal(5000) })).json();
           const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
           const closed = closures.find((c) => c.date === today);
           const banner = document.getElementById('closedBanner');
@@ -86,9 +128,16 @@
         } catch {}
       }
 
+      // Every 2 seconds while visible; every 30 seconds when the phone screen is off or the tab is hidden, to save data and battery.
+      function schedule() {
+        setTimeout(async () => { await loadQueue(); schedule(); }, document.hidden ? 30000 : 2000);
+      }
+      document.addEventListener('visibilitychange', () => !document.hidden && loadQueue());
+      window.addEventListener('online', loadQueue);
+
       loadQueue();
       loadClosure();
-      setInterval(loadQueue, 2000);
+      schedule();
       setInterval(loadClosure, 60000);
     </script>
     <script src="/menu.js"></script>

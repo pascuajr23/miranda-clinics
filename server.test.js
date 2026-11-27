@@ -70,7 +70,14 @@ test('queue API: public read, protected writes, add/edit/delete rooms', async ()
     assert.deepStrictEqual(site.doctors.map((d) => d.id), ['ken', 'kath']);
     assert.ok(!JSON.stringify(await (await fetch(`${base}/api/users`, { headers: { cookie } })).json()).includes('password'));
 
-    const saved = JSON.parse(fs.readFileSync(process.env.DATA_FILE, 'utf8'));
+    // Polling stays cheap: ETag revalidation answers 304, and responses carry the app version.
+    const first = await fetch(`${base}/api/rooms`);
+    assert.ok(first.headers.get('x-app-version'));
+    assert.strictEqual((await fetch(`${base}/api/rooms`, { headers: { 'if-none-match': first.headers.get('etag') } })).status, 304);
+    const css = await fetch(`${base}/original.css`, { headers: { 'accept-encoding': 'gzip' } });
+    assert.strictEqual(css.headers.get('content-encoding'), 'gzip');
+
+        const saved = JSON.parse(fs.readFileSync(process.env.DATA_FILE, 'utf8'));
     assert.deepStrictEqual(saved.map((r) => [r.id, r.number]), [['room1', 7], ['room2', 0]]);
   } finally {
     server.close();

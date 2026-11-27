@@ -1,9 +1,9 @@
 // Phone menu: a button that opens the About / Services / Schedule / Contact links (shown only on phones by CSS).
 (() => {
   const header = document.querySelector('.site-header');
-  const nav = header?.querySelector('.nav-links');
+  const nav = header && header.querySelector('.nav-links');
   if (!nav) return;
-  nav.id ||= 'site-menu';
+  if (!nav.id) nav.id = 'site-menu';
 
   const button = document.createElement('button');
   button.type = 'button';

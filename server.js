@@ -3,6 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -138,6 +139,36 @@ function getSession(req) {
   return { id: match[1], ...session, user };
 }
 
+// Fingerprint of the files in public/: changes whenever a new version is deployed, so open TVs reload themselves.
+function hashDir(dir, hash = crypto.createHash('sha1')) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) hashDir(full, hash);
+    else hash.update(entry.name).update(fs.readFileSync(full));
+  }
+  return hash;
+}
+const APP_VERSION = hashDir(PUBLIC_DIR).digest('hex').slice(0, 12);
+
+const COMPRESSIBLE = /^(text\/|application\/json|image\/svg)/;
+
+// Sends a body with an ETag (304 when the browser already has it) and gzip when the browser accepts it.
+// Keeps phones on slow data from downloading the same bytes again.
+function sendCached(req, res, content, type, cacheControl) {
+  const etag = `"${crypto.createHash('sha1').update(content).digest('base64url').slice(0, 16)}"`;
+  const headers = { 'Content-Type': type, 'Cache-Control': cacheControl, ETag: etag, 'X-App-Version': APP_VERSION, Vary: 'Accept-Encoding' };
+  if (req.headers['if-none-match'] === etag) {
+    res.writeHead(304, headers);
+    return res.end();
+  }
+  if (content.length > 1024 && COMPRESSIBLE.test(type) && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+    content = zlib.gzipSync(content);
+    headers['Content-Encoding'] = 'gzip';
+  }
+  res.writeHead(200, headers);
+  res.end(content);
+}
+
 function send(res, status, body, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers });
   res.end(body === undefined ? '' : JSON.stringify(body));
@@ -251,9 +282,10 @@ function describeRoomChange(room, patch) {
 async function handleApi(req, res, url) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
 
-  if (req.method === 'GET' && url.pathname === '/api/rooms') return send(res, 200, rooms.map(publicRoom));
+  // Public reads polled by the TV and phones: revalidated with ETags instead of re-sent in full.
+  if (req.method === 'GET' && url.pathname === '/api/rooms') return sendCached(req, res, Buffer.from(JSON.stringify(rooms.map(publicRoom))), 'application/json', 'no-cache');
 
-  if (req.method === 'GET' && url.pathname === '/api/site') return send(res, 200, { doctors: site.doctors, announcement: site.announcement, closures: site.closures });
+  if (req.method === 'GET' && url.pathname === '/api/site') return sendCached(req, res, Buffer.from(JSON.stringify({ doctors: site.doctors, announcement: site.announcement, closures: site.closures })), 'application/json', 'no-cache');
 
   if (req.method === 'GET' && url.pathname === '/api/session') {
     const session = getSession(req);
@@ -444,8 +476,10 @@ function serveStatic(req, res, url) {
   if (!file.startsWith(PUBLIC_DIR + path.sep)) return send(res, 404, { error: 'Not found.' });
   fs.readFile(file, (error, content) => {
     if (error) return send(res, 404, { error: 'Not found.' });
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
-    res.end(content);
+    const type = TYPES[path.extname(file)] || 'application/octet-stream';
+    // Pages, styles and scripts are revalidated on every load (so updates show at once); images are cached for a day.
+    const cacheControl = /^image\//.test(type) ? 'public, max-age=86400' : 'no-cache';
+    sendCached(req, res, content, type, cacheControl);
   });
 }
 

@@ -873,7 +873,7 @@ body.queue-page .rooms.two .serving small { letter-spacing: 0.18em; font-weight:
   body.queue-page main:has(.rooms.two) { width: 95vw; }
   /* Three digits fill the card: limited by the card's width (cqi) and the screen height. */
   body.queue-page .rooms.two .room-card { container-type: inline-size; }
-  body.queue-page .rooms.two .queue-number { font-size: min(40vh, 19vw); font-size: min(42vh, 46cqi); }
+  body.queue-page .rooms.two .queue-number { font-size: 19vw; font-size: min(40vh, 19vw); font-size: min(42vh, 46cqi); }
   body.queue-page .rooms.two .room-message { font-size: clamp(20px, 3.6vh, 54px); }
 }
 
@@ -900,7 +900,7 @@ body.queue-page .rooms.two .serving small { letter-spacing: 0.18em; font-weight:
   body.queue-page .rooms.two .serving small { font-size: 11px; }
   body.queue-page .rooms.two .serving { align-self: stretch; }
   /* As big as the card allows: three digits across its width, capped so both cards stay on screen. */
-  body.queue-page .rooms.two .queue-number { font-size: min(30vw, 15svh); font-size: min(46cqi, 21svh); }
+  body.queue-page .rooms.two .queue-number { font-size: 28vw; font-size: min(30vw, 15vh); font-size: min(46cqi, 21svh); } /* each line is a fallback for older phones */
   body.queue-page .rooms.two .room-message { font-size: 17px; margin-top: 6px; }
 }
 
