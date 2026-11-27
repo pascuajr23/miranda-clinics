@@ -893,3 +893,16 @@ body.queue-page .rooms.two .serving small { letter-spacing: 0.18em; font-weight:
   body.queue-page .rooms.two .queue-number { font-size: min(30vw, 15svh); }
   body.queue-page .rooms.two .room-message { font-size: 17px; margin-top: 6px; }
 }
+
+/* Two-doctor queue: department and doctor name always stay on one line, so the number keeps its room.
+   Text size follows the card width (cqi), with an ellipsis only as a last resort for very long names. */
+body.queue-page .rooms.two .room-card { container-type: inline-size; }
+body.queue-page .rooms.two .room-name,
+body.queue-page .rooms.two .info strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 901px) {
+  body.queue-page .rooms.two .room-name { font-size: min(3.4vh, 4.4cqi); }
+  body.queue-page .rooms.two .info strong { font-size: min(4.6vh, 7.6cqi); }
+}
+@media (max-width: 900px) {
+  body.queue-page .rooms.two .info strong { font-size: min(22px, 7.6cqi); }
+}
