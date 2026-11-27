@@ -14,6 +14,13 @@ test('queue API: public read, protected writes, add/edit/delete rooms', async ()
   const json = (method, body, cookie) => ({ method, headers: { 'Content-Type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(body) });
 
   try {
+    const home = await fetch(`${base}/`);
+    const homeHtml = await home.text();
+    const version = home.headers.get('x-app-version');
+    assert.ok(version);
+    assert.ok(homeHtml.includes(`/original.css?v=${version}`));
+    assert.ok(homeHtml.includes(`/menu.js?v=${version}`));
+
     const seeded = await (await fetch(`${base}/api/rooms`)).json();
     assert.deepStrictEqual(seeded.map((r) => r.id), ['room1', 'room2']);
 

@@ -477,7 +477,13 @@ function serveStatic(req, res, url) {
   fs.readFile(file, (error, content) => {
     if (error) return send(res, 404, { error: 'Not found.' });
     const type = TYPES[path.extname(file)] || 'application/octet-stream';
-    // Pages, styles and scripts are revalidated on every load (so updates show at once); images are cached for a day.
+    if (type.startsWith('text/html')) {
+      content = Buffer.from(content.toString('utf8').replace(
+        /\b(href|src)=(["'])\/([^"'?#]+\.(?:css|js))(?:\?[^"']*)?\2/g,
+        (_match, attribute, quote, asset) => `${attribute}=${quote}/${asset}?v=${APP_VERSION}${quote}`,
+      ));
+    }
+    // Versioned CSS and scripts bypass stale intermediary caches; other pages revalidate, images cache for a day.
     const cacheControl = /^image\//.test(type) ? 'public, max-age=86400' : 'no-cache';
     sendCached(req, res, content, type, cacheControl);
   });
