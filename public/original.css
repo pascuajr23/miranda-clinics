@@ -47,7 +47,7 @@ body.control-page, body.queue-page {
   color: var(--white);
 }
 .site-header {
-  transition: background 220ms ease, box-shadow 220ms ease, color 220ms ease, padding 220ms ease;
+  transition: background 220ms ease, box-shadow 220ms ease, color 220ms ease;
 }
 .site-header.transparent .nav-links a,
 .site-header.transparent .brand-text,
@@ -89,7 +89,8 @@ body.control-page, body.queue-page {
 }
 .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4, 12, 25, 0.2), rgba(4, 12, 25, 0.4)); }
 .hero-content { position: relative; z-index: 1; max-width: min(860px, 100%); color: var(--white); text-align: center; }
-.eyebrow { margin-bottom: 0.7rem; text-transform: uppercase; letter-spacing: 0.24em; font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+.eyebrow { margin-bottom: 0.7rem; text-transform: uppercase; letter-spacing: 0.24em; font-size: 0.8rem; font-weight: 700; color: var(--primary); }
+.hero .eyebrow { color: var(--accent); } /* light blue only reads on the dark hero photo */
 .hero h1 { font-size: clamp(2.7rem, 5vw, 4.8rem); line-height: 1.05; margin: 0 0 1rem; max-width: 900px; margin-left: auto; margin-right: auto; }
 .hero-copy { font-size: clamp(1.05rem, 1.7vw, 1.25rem); color: rgba(255,255,255,0.92); max-width: 700px; margin: 0 auto 1.8rem; }
 .hero-actions { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
@@ -110,7 +111,7 @@ body.control-page, body.queue-page {
 .doctor-service-card--pediatrics::before { background: linear-gradient(180deg, #7bc9eb, #2d7a97); }
 .doctor-service-card--adult::before { background: linear-gradient(180deg, #2f7f9a, #133f54); }
 .doctor-service-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
-.doctor-label { margin: 0 0 0.3rem; color: var(--accent); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.7rem; }
+.doctor-label { margin: 0 0 0.3rem; color: var(--primary); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.7rem; }
 .doctor-badge { background: rgba(87,184,216,0.14); color: var(--primary-dark); padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
 .service-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; }
 .service-list li { display: flex; align-items: flex-start; gap: 0.6rem; }
@@ -748,7 +749,7 @@ main { margin: 24px auto 32px; }
   background: transparent;
   box-shadow: none;
   color: #ffffff;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
 .site-header.scrolled {
   background: rgba(255, 255, 255, 0.96);
@@ -780,10 +781,15 @@ body.control-page .site-header { position: sticky; }
   .site-header .nav-links { gap: 0.7rem; font-size: 0.9rem; }
 }
 /* Phones: logo only (menu and name hidden), as on mirandaclinics.com. Control keeps its Logout button. */
+/* Phones: logo and Login on top, the section links as a full-width row under them. */
 @media (max-width: 560px) {
-  .site-header { padding: 0.8rem 0.9rem; height: auto; }
-  .site-header .nav-links,
+  .site-header,
+  body.queue-page .site-header,
+  body.control-page .site-header { padding: 0.7rem 0.9rem 0.3rem; height: auto; flex-wrap: wrap; row-gap: 0.1rem; }
   .site-header .brand-text { display: none; }
+  .site-header .header-right { display: contents; }
+  .site-header .nav-links { order: 3; width: 100%; justify-content: space-between; gap: 0; font-size: 0.9rem; }
+  .site-header .nav-links a { padding: 0.55rem 0.2rem; }
 }
 
 /* Queue display: never crop when the window is resized. Columns may shrink below their content,
@@ -829,3 +835,13 @@ body.queue-page .room-header .status { flex: none; }
   body.queue-page .serving small { font-size: 10px; }
   body.queue-page .queue-number, body.queue-page .rooms.many .queue-number { font-size: 48px; line-height: 1.05; margin: 0; }
 }
+
+/* Section links land below the fixed header (taller on phones, where the links take a second row). */
+html { scroll-padding-top: calc(var(--header-height) + 12px); }
+@media (max-width: 560px) { html { scroll-padding-top: 108px; } }
+
+/* Browser surfaces in the clinic palette. */
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+::selection { background: rgba(87, 184, 216, 0.3); color: inherit; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }

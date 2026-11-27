@@ -15,7 +15,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html', '/admin': 'admin.html' };
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
 const EDITABLE = ['name', 'department', 'doctorId', 'number', 'doctorIn', 'color', 'message'];
 const QUEUE_FIELDS = ['number', 'doctorIn', 'message']; // all doctors and staff may change on their own rooms
 const ROLES = ['admin', 'staff', 'doctor']; // the env login is the super admin and is never stored
@@ -30,10 +30,10 @@ const SEED = [
 // Dr. Ken and Dr. Kath are fixed: they can't be removed, and only their schedule can change.
 const SITE_SEED = {
   doctors: [
-    { id: 'ken', fixed: true, name: 'Dr. Kenneth Miranda', label: 'Adult care', badge: 'Adults', color: 'blue', photo: '/assets/doctors/dr-ken.png',
+    { id: 'ken', fixed: true, name: 'Dr. Kenneth Miranda', label: 'Adult care', badge: 'Adults', color: 'blue', photo: '/assets/doctors/dr-ken.webp',
       bio: 'Internal medicine specialist offering comprehensive adult care, preventive visits, and chronic condition management.',
       services: ['General Consultation', 'CardioPulmonary Clearance', 'Medical Certificates', 'Fit to Work', 'Adult Vaccines'], schedule: '' },
-    { id: 'kath', fixed: true, name: 'Dr. Kath Miranda', label: 'Pediatric care', badge: 'Children', color: 'green', photo: '/assets/doctors/dr-kath.png',
+    { id: 'kath', fixed: true, name: 'Dr. Kath Miranda', label: 'Pediatric care', badge: 'Children', color: 'green', photo: '/assets/doctors/dr-kath.webp',
       bio: 'Pediatrician providing gentle, child-focused care for routine checkups, growth tracking, and everyday health concerns.',
       services: ['Well-baby/child checkup', 'Sick-baby/child checkup', 'Immunizations', 'Ear-piercing', 'Follow-ups'], schedule: '' },
   ],
@@ -67,6 +67,8 @@ for (const room of rooms) {
 
 const saveRooms = () => saveJson(DATA_FILE, rooms);
 site.closures ??= []; // added after the first release
+// The Mirandas' photos aren't editable, so always use the current files (they moved from PNG to WebP).
+for (const d of site.doctors) if (d.fixed) d.photo = SITE_SEED.doctors.find((s) => s.id === d.id)?.photo ?? d.photo;
 const saveSite = () => saveJson(SITE_FILE, site);
 let activity = loadJson(LOG_FILE, []);
 
