@@ -791,7 +791,8 @@ body.control-page .site-header { position: sticky; }
   .site-header .brand-text { display: none; }
   .site-header .header-right { display: contents; }
   .menu-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: 8px; border: 0; border-radius: 12px; background: transparent; color: inherit; cursor: pointer; }
-  .site-header .nav-links { display: none; order: 3; width: 100%; flex-direction: column; align-items: stretch; text-align: center; gap: 0; padding: 0.4rem 0 0.2rem; font-size: 1.05rem; }
+  /* The panel floats over the page (absolute under the header) instead of pushing content down. */
+  .site-header .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch; text-align: center; gap: 0; padding: 0 0.9rem 0.4rem; font-size: 1.05rem; background: #fff; box-shadow: 0 18px 30px rgba(17, 61, 84, 0.14); }
   .site-header.menu-open .nav-links { display: flex; }
   .site-header .nav-links a { padding: 0.8rem 0.2rem; border-top: 1px solid rgba(21, 49, 63, 0.08); }
   .site-header.menu-open { transition: none; background: #fff; color: var(--text); box-shadow: 0 10px 30px rgba(17, 61, 84, 0.12); }
