@@ -14,7 +14,7 @@ const LOG_LIMIT = 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
-const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html', '/admin': 'admin.html' };
+const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html', '/admin': 'admin.html', '/privacy': 'privacy.html' };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
 const EDITABLE = ['name', 'department', 'doctorId', 'number', 'doctorIn', 'color', 'message'];
 const QUEUE_FIELDS = ['number', 'doctorIn', 'message']; // all doctors and staff may change on their own rooms

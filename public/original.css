@@ -916,3 +916,9 @@ body.queue-page .rooms.two .info strong { display: block; white-space: nowrap; o
 @media (max-width: 900px) {
   body.queue-page .rooms.two .info strong { font-size: min(22px, 7.6cqi); }
 }
+
+/* Footer copyright + privacy link, and the note on the login card. */
+.footer-legal { grid-column: 1 / -1; margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.85rem; color: #cbd5e1; text-align: center; }
+.footer-legal a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.login-card .login-privacy { margin: 0.4rem 0 0; font-size: 0.85rem; color: #64748b; }
+.login-card .login-privacy a { color: #1f5f78; text-decoration: underline; }

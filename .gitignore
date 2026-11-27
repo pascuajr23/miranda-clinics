@@ -15,3 +15,6 @@ public/styles.css
 
 # Snapshot of the old site: its auth.js contains the old live admin password. Never publish it.
 original/
+
+# Private deployment notes (kept off GitHub)
+DEPLOY.md
