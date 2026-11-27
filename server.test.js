@@ -53,7 +53,16 @@ test('queue API: public read, protected writes, add/edit/delete rooms', async ()
     assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'drken', password: 'ken-pass-1', role: 'doctor', doctorIds: ['ken'] }, boss))).status, 201);
     assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'boss3', password: 'boss-pass-1', role: 'admin' }, boss))).status, 403);
 
-    // The two Mirandas stay: no removal, and only their schedule changes.
+    // Room messages (doctors may set their own), closures, and the activity log.
+    assert.strictEqual((await (await fetch(`${base}/api/rooms/room2`, json('PATCH', { message: 'Back at 1 PM' }, kath))).json()).message, 'Back at 1 PM');
+    assert.strictEqual((await fetch(`${base}/api/closures`, json('POST', { date: '2026-12-25', note: 'Christmas' }, kath))).status, 403);
+    assert.strictEqual((await fetch(`${base}/api/closures`, json('POST', { date: 'soon' }, cookie))).status, 400);
+    assert.strictEqual((await fetch(`${base}/api/closures`, json('POST', { date: '2026-12-25', note: 'Christmas' }, cookie))).status, 201);
+    assert.strictEqual((await fetch(`${base}/api/activity`, { headers: { cookie: kath } })).status, 403);
+    const log = await (await fetch(`${base}/api/activity`, { headers: { cookie } })).json();
+    assert.ok(log.some((e) => e.action === 'Room 2: message “Back at 1 PM”'));
+
+        // The two Mirandas stay: no removal, and only their schedule changes.
     assert.strictEqual((await fetch(`${base}/api/doctors/ken`, { method: 'DELETE', headers: { cookie } })).status, 400);
     const ken = await (await fetch(`${base}/api/doctors/ken`, json('PATCH', { name: 'Someone else', schedule: 'Mon 9-12' }, cookie))).json();
     assert.deepStrictEqual([ken.name, ken.schedule], ['Dr. Kenneth Miranda', 'Mon 9-12']);

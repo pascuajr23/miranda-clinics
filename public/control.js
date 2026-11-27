@@ -40,6 +40,10 @@ function roomCard(r) {
         <input name="number" type="number" min="0" max="9999" placeholder="Enter new number" required />
         <button type="submit">Override</button>
       </form>
+      <form class="override-row" data-action="message">
+        <input name="message" type="text" maxlength="60" value="${esc(r.message || '')}" placeholder="Message on TV" aria-label="Message on TV" />
+        <button type="submit">${r.message ? 'Update' : 'Show'}</button>
+      </form>
     </article>`;
 }
 
@@ -91,6 +95,9 @@ roomsEl.addEventListener('click', async (event) => {
 roomsEl.addEventListener('submit', (event) => {
   event.preventDefault();
   const id = event.target.closest('.room').dataset.id;
+  if (event.target.dataset.action === 'message') {
+    return updateRoom(id, { message: event.target.message.value }, (r) => (r.message ? `TV shows: ${r.message}` : 'Message cleared'));
+  }
   const number = Number(event.target.number.value);
   if (!Number.isInteger(number) || number < 0) return toast('Enter a whole number, 0 or more.', true);
   updateRoom(id, { number }, (r) => `${r.name}: now serving ${pad(r.number)}`);

@@ -9,6 +9,9 @@
     <style>
       /* More rooms than the original two: 3 across on wide screens. */
       @media (min-width: 901px) { .rooms.three { grid-template-columns: repeat(3, 1fr); } }
+      .room-message { margin-top: 0.6em; font-weight: 700; font-size: clamp(16px, 2.4vh, 32px); color: #b45309; text-align: center; }
+      .closed-banner { margin: 12px auto 0; max-width: 1180px; padding: 0.8em 1.2em; border-radius: 14px; background: #fef3c7; color: #92400e; font-weight: 700; text-align: center; font-size: clamp(16px, 2.6vh, 34px); }
+      .closed-banner[hidden] { display: none; }
     </style>
   </head>
   <body class="queue-page">
@@ -26,6 +29,7 @@
         </nav>
       </header>
 
+      <p class="closed-banner" id="closedBanner" hidden></p>
       <main>
         <div class="rooms" id="queueRoot"></div>
       </main>
@@ -60,6 +64,7 @@
                 <small>CURRENTLY SERVING</small>
                 <div class="queue-number" style="color:${color}">${String(r.number).padStart(3, '0')}</div>
               </div>
+              ${r.message ? `<div class="room-message">${esc(r.message)}</div>` : ''}
             </div>`;
           }).join('') || '<p>No rooms are open.</p>';
         } catch (error) {
@@ -67,8 +72,22 @@
         }
       }
 
+      // Banner on days the clinic is closed (dates are clinic time, Asia/Manila).
+      async function loadClosure() {
+        try {
+          const { closures } = await (await fetch('/api/site', { cache: 'no-store' })).json();
+          const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+          const closed = closures.find((c) => c.date === today);
+          const banner = document.getElementById('closedBanner');
+          banner.hidden = !closed;
+          if (closed) banner.textContent = `Closed today${closed.note ? ` · ${closed.note}` : ''}`;
+        } catch {}
+      }
+
       loadQueue();
+      loadClosure();
       setInterval(loadQueue, 2000);
+      setInterval(loadClosure, 60000);
     </script>
   </body>
 </html>

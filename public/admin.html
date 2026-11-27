@@ -20,6 +20,12 @@
       .tabs button.active { background: #133f54; border-color: #133f54; color: #fff; }
       [data-panel] { display: none; }
       [data-panel].active { display: block; }
+      .room-card input[type="date"] { width: 100%; padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid #d2dce8; background: #f8fafc; color: #102a43; font: inherit; }
+      #closureForm { max-width: 520px; margin: 0 auto; }
+      .plain-list { list-style: none; padding: 0; margin: 1.5rem auto 0; max-width: 720px; display: grid; gap: 8px; }
+      .plain-list li { display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #fff; border-radius: 14px; padding: 0.8rem 1rem; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06); }
+      .plain-list time, .plain-list .who { color: #64748b; font-size: 0.9rem; white-space: nowrap; }
+      .plain-list button { border: none; background: none; color: #b33636; font: inherit; font-weight: 600; cursor: pointer; }
       .standby { text-align: center; color: #475569; margin: 0 0 1.5rem; }
       .admin-section > h2 { color: #0f172a; margin: 0 0 1rem; }
       .room-card input[type="password"], .room-card textarea, .room-card select { width: 100%; padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid #d2dce8; background: #f8fafc; color: #102a43; font: inherit; }
@@ -79,7 +85,9 @@
           <button type="button" data-tab="announcement">Announcement</button>
           <button type="button" data-tab="doctors">Doctors</button>
           <button type="button" data-tab="rooms">Rooms</button>
+          <button type="button" data-tab="closures">Closures</button>
           <button type="button" data-tab="staff">Staff</button>
+          <button type="button" data-tab="activity">Activity</button>
         </nav>
 
         <div data-panel="main">
@@ -117,6 +125,19 @@
         <div data-panel="rooms">
           <p class="standby" id="standby"></p>
           <div class="rooms-grid" id="roomList"></div>
+        </div>
+
+        <div data-panel="closures">
+          <form class="room-card" id="closureForm">
+            <label>Closed on</label><input type="date" name="date" required />
+            <label>Note</label><input type="text" name="note" maxlength="80" placeholder="e.g. Christmas Day" />
+            <button type="submit">Add closure</button>
+          </form>
+          <ul class="plain-list" id="closureList"></ul>
+        </div>
+
+        <div data-panel="activity">
+          <ul class="plain-list" id="activityList"></ul>
         </div>
 
         <div data-panel="staff">

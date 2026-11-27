@@ -29,7 +29,7 @@ Get the current site live and dependable.
 - **Privacy notice page** stating plainly that the site collects no patient information. Short, and true by design.
 - **Search basics:** page titles and descriptions, `MedicalClinic` structured data (address, hours, phone) so Google shows the clinic correctly, and a link to the Google Business Profile.
 
-## Phase 2: Run the clinic from the control panel
+## Phase 2: Run the clinic from the control panel (done)
 
 Replace hard-coded text with things staff can change themselves. All clinic data, no patient data.
 

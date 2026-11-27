@@ -116,6 +116,7 @@ body.control-page, body.queue-page {
 .service-list li { display: flex; align-items: flex-start; gap: 0.6rem; }
 .schedule-card { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.25rem; max-width: 1100px; margin: 0 auto; }
 .announcement-details, .announcement-hours { color: var(--muted); }
+.announcement-closures { color: #b45309; font-weight: 700; }
 .schedule-list { display: grid; gap: 0.9rem; }
 .schedule-item { border-top: 1px solid #e5eef4; padding-top: 0.8rem; }
 .schedule-item strong { display: block; margin-bottom: 0.2rem; }

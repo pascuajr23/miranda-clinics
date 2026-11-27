@@ -8,14 +8,16 @@ const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'rooms.json');
-const SITE_FILE = path.join(path.dirname(DATA_FILE), 'site.json'); // doctors, users, announcement
+const SITE_FILE = path.join(path.dirname(DATA_FILE), 'site.json'); // doctors, users, announcement, closures
+const LOG_FILE = path.join(path.dirname(DATA_FILE), 'activity.json'); // staff actions only, never patients
+const LOG_LIMIT = 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 const PAGES = { '/': 'index.html', '/queue': 'queue.html', '/control': 'control.html', '/admin': 'admin.html' };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
-const EDITABLE = ['name', 'department', 'doctorId', 'number', 'doctorIn', 'color'];
-const QUEUE_FIELDS = ['number', 'doctorIn']; // all doctors and staff may change on their own rooms
+const EDITABLE = ['name', 'department', 'doctorId', 'number', 'doctorIn', 'color', 'message'];
+const QUEUE_FIELDS = ['number', 'doctorIn', 'message']; // all doctors and staff may change on their own rooms
 const ROLES = ['admin', 'staff', 'doctor']; // the env login is the super admin and is never stored
 const COLORS = ['blue', 'green', 'purple', 'orange']; // must match the colour lists in public/queue.html and public/control.js
 
@@ -64,7 +66,16 @@ for (const room of rooms) {
 }
 
 const saveRooms = () => saveJson(DATA_FILE, rooms);
+site.closures ??= []; // added after the first release
 const saveSite = () => saveJson(SITE_FILE, site);
+let activity = loadJson(LOG_FILE, []);
+
+// Who changed what, newest first. Names of staff and rooms only.
+function logAction(user, action) {
+  activity.unshift({ at: new Date().toISOString(), user: user.name || user.username, action });
+  activity = activity.slice(0, LOG_LIMIT);
+  saveJson(LOG_FILE, activity);
+}
 const doctorName = (id) => site.doctors.find((d) => d.id === id)?.name || '';
 const publicRoom = (r) => ({ ...r, doctor: doctorName(r.doctorId) });
 
@@ -163,7 +174,7 @@ function validatePatch(input) {
       if (!COLORS.includes(value)) throw new Error(`Color must be one of: ${COLORS.join(', ')}.`);
     } else if (key === 'doctorId') {
       if (value !== '' && !site.doctors.some((d) => d.id === value)) throw new Error('Unknown doctor.');
-    } else if (typeof value !== 'string' || value.trim().length > 80) {
+    } else if (typeof value !== 'string' || value.trim().length > (key === 'message' ? 60 : 80)) {
       throw new Error(`${key} must be text up to 80 characters.`);
     }
     patch[key] = typeof value === 'string' ? value.trim() : value;
@@ -225,12 +236,22 @@ function validNewPassword(password) {
   return hashPassword(password);
 }
 
+function describeRoomChange(room, patch) {
+  const parts = [];
+  if ('number' in patch) parts.push(`number ${String(patch.number).padStart(3, '0')}`);
+  if ('doctorIn' in patch) parts.push(patch.doctorIn ? 'doctor in' : 'doctor out');
+  if ('message' in patch) parts.push(patch.message ? `message “${patch.message}”` : 'message cleared');
+  if ('doctorId' in patch) parts.push(`doctor ${doctorName(patch.doctorId) || 'none'}`);
+  for (const key of ['name', 'department', 'color']) if (key in patch) parts.push(`${key} ${patch[key]}`);
+  return `${room.name}: ${parts.join(', ')}`;
+}
+
 async function handleApi(req, res, url) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
 
   if (req.method === 'GET' && url.pathname === '/api/rooms') return send(res, 200, rooms.map(publicRoom));
 
-  if (req.method === 'GET' && url.pathname === '/api/site') return send(res, 200, { doctors: site.doctors, announcement: site.announcement });
+  if (req.method === 'GET' && url.pathname === '/api/site') return send(res, 200, { doctors: site.doctors, announcement: site.announcement, closures: site.closures });
 
   if (req.method === 'GET' && url.pathname === '/api/session') {
     const session = getSession(req);
@@ -248,6 +269,7 @@ async function handleApi(req, res, url) {
     failedLogins.delete(ip);
     const sid = crypto.randomBytes(32).toString('hex');
     sessions.set(sid, { userId, expiresAt: Date.now() + SESSION_TTL_MS });
+    logAction(findUser(userId), 'Logged in');
     const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
     return send(res, 200, { ok: true }, { 'Set-Cookie': `sid=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}${secure}` });
   }
@@ -271,6 +293,7 @@ async function handleApi(req, res, url) {
     if (!passwordMatches(String(current || ''), user.password)) return send(res, 400, { error: 'Your current password is wrong.' });
     user.password = validNewPassword(password);
     saveSite();
+    logAction(user, 'Changed their password');
     return send(res, 200, { ok: true });
   }
 
@@ -284,6 +307,7 @@ async function handleApi(req, res, url) {
     if (!isAdmin && Object.keys(patch).some((k) => !QUEUE_FIELDS.includes(k))) return forbidden();
     Object.assign(room, patch);
     saveRooms();
+    logAction(user, describeRoomChange(room, patch));
     return send(res, 200, publicRoom(room));
   }
 
@@ -294,7 +318,31 @@ async function handleApi(req, res, url) {
     const input = await readJson(req);
     for (const key of ['title', 'details', 'hours']) if (key in input) site.announcement[key] = text(input[key], key, 200);
     saveSite();
+    logAction(user, 'Updated the announcement');
     return send(res, 200, site.announcement);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/activity') return send(res, 200, activity);
+
+  if (req.method === 'POST' && url.pathname === '/api/closures') {
+    const input = await readJson(req);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date || '') || Number.isNaN(Date.parse(input.date))) return send(res, 400, { error: 'Pick a date.' });
+    const closure = { id: crypto.randomUUID(), date: input.date, note: text(input.note ?? '', 'Note', 80) };
+    site.closures.push(closure);
+    site.closures.sort((a, b) => a.date.localeCompare(b.date));
+    saveSite();
+    logAction(user, `Added closure ${closure.date}${closure.note ? ` (${closure.note})` : ''}`);
+    return send(res, 201, closure);
+  }
+
+  const closureMatch = /^\/api\/closures\/([\w-]+)$/.exec(url.pathname);
+  if (closureMatch && req.method === 'DELETE') {
+    const closure = site.closures.find((c) => c.id === closureMatch[1]);
+    if (!closure) return send(res, 404, { error: 'Closure not found.' });
+    site.closures = site.closures.filter((c) => c !== closure);
+    saveSite();
+    logAction(user, `Removed closure ${closure.date}`);
+    return send(res, 204);
   }
 
   if (req.method === 'POST' && url.pathname === '/api/doctors') {
@@ -302,6 +350,7 @@ async function handleApi(req, res, url) {
     Object.assign(doctor, validateDoctor(await readJson(req)));
     site.doctors.push(doctor);
     saveSite();
+    logAction(user, `Added doctor ${doctor.name}`);
     return send(res, 201, doctor);
   }
 
@@ -312,6 +361,7 @@ async function handleApi(req, res, url) {
     if (req.method === 'PATCH') {
       Object.assign(doctor, validateDoctor(await readJson(req), doctor));
       saveSite();
+      logAction(user, `Edited doctor ${doctor.name}`);
       return send(res, 200, doctor);
     }
     if (req.method === 'DELETE') {
@@ -322,6 +372,7 @@ async function handleApi(req, res, url) {
       for (const r of rooms) if (r.doctorId === doctor.id) r.doctorId = '';
       saveSite();
       saveRooms();
+      logAction(user, `Removed doctor ${doctor.name}`);
       return send(res, 204);
     }
   }
@@ -338,6 +389,7 @@ async function handleApi(req, res, url) {
     const newUser = { id: crypto.randomUUID(), name: '', role: 'staff', doctorIds: [], ...validateUser(input) };
     site.users.push(newUser);
     saveSite();
+    logAction(user, `Added ${newUser.role} login ${newUser.username}`);
     return send(res, 201, publicUser(newUser));
   }
 
@@ -351,11 +403,13 @@ async function handleApi(req, res, url) {
       if (patch.role && !mayManage(patch.role)) return forbidden();
       Object.assign(target, patch);
       saveSite();
+      logAction(user, `Edited login ${target.username}${patch.password ? ' (new password)' : ''}`);
       return send(res, 200, publicUser(target));
     }
     if (req.method === 'DELETE') {
       site.users = site.users.filter((u) => u !== target);
       saveSite();
+      logAction(user, `Removed login ${target.username}`);
       return send(res, 204);
     }
   }
@@ -365,6 +419,7 @@ async function handleApi(req, res, url) {
     const room = { id: crypto.randomUUID(), name: `Room ${rooms.length + 1}`, department: '', doctorId: '', number: 0, doctorIn: false, color: 'blue', ...patch };
     rooms.push(room);
     saveRooms();
+    logAction(user, `Added ${room.name}`);
     return send(res, 201, publicRoom(room));
   }
 
@@ -374,6 +429,7 @@ async function handleApi(req, res, url) {
   if (room && req.method === 'DELETE') {
     rooms = rooms.filter((r) => r !== room);
     saveRooms();
+    logAction(user, `Removed ${room.name}`);
     return send(res, 204);
   }
 

@@ -9,6 +9,9 @@ let me = null;
 let doctors = [];
 let users = [];
 let rooms = [];
+let closures = [];
+const closureListEl = document.getElementById('closureList');
+const dateFmt = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 const roomListEl = document.getElementById('roomList');
 
 // Tabs (admins only); the hash keeps the tab across reloads.
@@ -18,7 +21,15 @@ function showTab(name) {
   document.querySelectorAll('[data-tab]').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   history.replaceState(null, '', name === 'main' ? location.pathname : `#${name}`);
 }
-document.querySelector('.tabs').addEventListener('click', (e) => e.target.dataset.tab && showTab(e.target.dataset.tab));
+window.addEventListener('hashchange', () => {
+  showTab(location.hash.slice(1));
+  if (location.hash === '#activity') loadActivity();
+});
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  if (!e.target.dataset.tab) return;
+  showTab(e.target.dataset.tab);
+  if (e.target.dataset.tab === 'activity') loadActivity();
+});
 
 const call = (method, path, body) => api(method, path, body, () => showLogin('Your session ended. Please sign in again.'));
 const ROLE_NAMES = { admin: 'Admin', staff: 'Staff', doctor: 'Doctor' };
@@ -41,6 +52,7 @@ async function showPanel(user) {
   document.querySelector('[data-tab="staff"]').hidden = !user.superAdmin; // only the super admin manages staff
   showTab(location.hash.slice(1));
   if (user.role === 'admin') await loadAdmin();
+  if (location.hash === '#activity') loadActivity();
 }
 
 async function loadAdmin() {
@@ -49,7 +61,9 @@ async function loadAdmin() {
     doctors = site.doctors;
     users = userList;
     rooms = roomList;
+    closures = site.closures;
     renderRooms();
+    renderClosures();
     for (const key of ['title', 'details', 'hours']) announcementForm[key].value = site.announcement[key] || '';
     renderDoctors();
     renderUsers();
@@ -143,6 +157,50 @@ function renderUsers() {
       <select name="role">${STAFF_ROLES.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select>
       <button type="submit">Add staff</button>
     </form>`;
+}
+
+function renderClosures() {
+  closureListEl.innerHTML = closures.map((c) => `
+    <li data-id="${esc(c.id)}"><span><strong>${esc(dateFmt(c.date))}</strong>${c.note ? ` · ${esc(c.note)}` : ''}</span>
+    <button type="button">Remove</button></li>`).join('') || '<li>No closures planned.</li>';
+}
+
+document.getElementById('closureForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    closures.push(await call('POST', '/api/closures', Object.fromEntries(new FormData(form))));
+    closures.sort((a, b) => a.date.localeCompare(b.date));
+    form.reset();
+    renderClosures();
+    toast('Closure added');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+closureListEl.addEventListener('click', async (event) => {
+  const id = event.target.closest('button') && event.target.closest('[data-id]')?.dataset.id;
+  if (!id) return;
+  try {
+    await call('DELETE', `/api/closures/${id}`);
+    closures = closures.filter((c) => c.id !== id);
+    renderClosures();
+    toast('Closure removed');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+async function loadActivity() {
+  try {
+    const log = await call('GET', '/api/activity');
+    document.getElementById('activityList').innerHTML = log.map((e) => `
+      <li><span>${esc(e.action)} <span class="who">· ${esc(e.user)}</span></span>
+      <time datetime="${esc(e.at)}">${esc(new Date(e.at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</time></li>`).join('') || '<li>Nothing yet.</li>';
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 function renderRooms() {
