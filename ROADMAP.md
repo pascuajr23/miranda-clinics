@@ -25,9 +25,11 @@ Anything that needs real patient data (records, results, prescriptions, bookings
 | 1. Launch and trust | In progress: privacy notice, licence and image speed-ups done; deploy and backups still to do |
 | 2. Run the clinic from the admin panel | Done |
 | 3 to 5 | Proposed |
-| 6 to 11 (new) | Proposed |
+| 6. Reliable every day | Started: self-healing TV done |
+| 7. Easier for every patient | Started: light queue page for old phones and slow data done |
+| 8 to 11 | Proposed |
 
-Also done along the way: a two-doctor TV layout with numbers sized for elderly patients across the hall, both doctors on one phone screen, a phone menu, accessibility fixes (labelled fields, contrast, keyboard tabs), WebP images and a self-hosted hero photo.
+Also done along the way: a two-doctor TV layout with numbers sized for elderly patients across the hall, both doctors on one phone screen, a phone menu that floats over the page and holds the Login button, a Home button and top bar on the admin login, accessibility fixes (labelled fields, contrast, keyboard tabs), WebP images and a self-hosted hero photo, an MIT licence for the code with the clinic's photos and data kept as its own, and a privacy notice.
 
 ## Phase 1: Launch and trust (now)
 
@@ -106,7 +108,7 @@ Make the system boring in the best way: it just keeps working.
 
 - **Logins that survive a restart:** keep sessions in the data folder so an update doesn't sign everyone out.
 - **Backup and restore from the admin panel:** download all clinic settings (doctors, rooms, staff, closures) as one file, and restore it on a new server.
-- **TV that heals itself:** the TV page reloads on its own after an update and shows "Reconnecting…" if the server is unreachable, instead of stale numbers with no warning.
+- ~~**TV that heals itself**~~ Done: if the server is unreachable the last numbers stay, faded, under a "Reconnecting…" bar and update only when it's back; open TVs reload themselves after an update.
 - **Health check page** for the uptime monitor, so an alert fires before the clinic notices.
 - **Two-step login for admins (optional):** a code from an authenticator app on top of the password.
 
@@ -120,7 +122,7 @@ Built around elderly patients, parents with children, and visitors who read Fili
 - **Large-text mode** for the phone queue and website, one tap, remembered on that phone.
 - **Colour-blind-safe rooms:** each room also gets a letter or shape (A / B), not just blue and green.
 - **Clear "your turn is next" moment on the TV:** the number pulses briefly when it changes, so people looking away still notice.
-- **Readable on old phones and slow data:** a lightweight queue page that loads on 3G.
+- ~~**Readable on old phones and slow data**~~ Done: compressed and cached files (first load about 26 KB, unchanged checks download nothing), slower checks when the screen is off, and code older phones can run.
 
 Risk: none. No personal data.
 
@@ -193,7 +195,7 @@ Use a proper electronic medical record (EMR) system for any of these, never this
 **Suggested order:**
 
 1. **Finish Phase 1** (go live with HTTPS, a new password and backups).
-2. **Phase 6** right after, so the live site stays up and recoverable.
+2. **Finish Phase 6** right after (logins that survive restarts, backup and restore), so the live site stays up and recoverable.
 3. **Phase 3 and Phase 7 together:** the waiting room gets sound, estimated waits and the accessibility touches that matter most to elderly patients.
 4. **Phase 5 and Phase 8** whenever there's time; they're mostly writing, and can run alongside anything.
 5. **Phase 4, 9 and 10** once the basics are settled. Phase 4 builds on Phase 3's estimated wait; Phase 10 builds on its daily totals.
