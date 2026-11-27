@@ -29,16 +29,33 @@ Get the current site live and dependable.
 - **Privacy notice page** stating plainly that the site collects no patient information. Short, and true by design.
 - **Search basics:** page titles and descriptions, `MedicalClinic` structured data (address, hours, phone) so Google shows the clinic correctly, and a link to the Google Business Profile.
 
-## Phase 2: Run the clinic from the control panel (done)
+## Phase 2: Run the clinic from the admin panel (done)
 
-Replace hard-coded text with things staff can change themselves. All clinic data, no patient data.
+Everything on the home page and TV that used to be hard-coded is now set from `/admin`. All of it is clinic data, no patient data.
 
-- **Announcements editor:** add, edit, schedule and expire announcements (for example "Open on Sunday", "Closed on Dec 25") instead of editing code.
-- **Doctor schedules:** each doctor's clinic days and hours, shown on the home page and the TV.
-- **Holidays and closures:** a date list that shows a banner on the site and the TV.
-- **Room status messages:** "Back at 1:00 PM", "On break", shown under the number on the TV.
-- **Staff accounts with roles:** separate logins for each doctor and the secretary, instead of one shared password. Each can be removed when someone leaves.
-- **Staff activity log:** who changed which number or room, and when. This logs staff actions, not patients.
+What was built:
+
+- **Admin panel with tabs:** Main (big link to queue control, TV display, own password), Announcement, Doctors, Rooms, Closures, Staff and Activity. Login lands here.
+- **Logins by role:**
+  - *Super admin:* the login in `.env`. Manages staff accounts and roles.
+  - *Admin:* a staff account set to Admin. Runs every room, sets up rooms, adds doctors and their logins.
+  - *Staff:* runs the rooms of the doctors ticked for them; one staff can handle several doctors.
+  - *Doctor:* login on the doctor's card; controls whichever room the doctor is put in.
+- **Doctors:** Dr. Ken and Dr. Kath are always listed (only their schedule changes). Visiting doctors can be added and removed; they show under Services, not About.
+- **Rooms:** pick the doctor for each room; doctors not in a room show as on standby.
+- **Announcement editor:** title, details and hours.
+- **Doctor schedules:** shown in the home page Schedule section.
+- **Closures:** dates the clinic is closed. The home page lists the next 30 days; the TV shows "Closed today".
+- **Room messages:** "Back at 1:00 PM" set from queue control, shown under the number on the TV.
+- **Activity log:** who did what and when (staff actions only, last 1,000 entries).
+- **Queue on phones:** compact layout so every room fits at a glance; the TV layout is unchanged.
+
+Left over (small, pick up any time):
+
+- Doctor schedules on the TV, not just the home page.
+- Scheduled announcements that start and expire on their own.
+- Logins survive a server restart (sessions are kept in memory today).
+- Photos for visiting doctors (upload from the admin panel).
 
 ## Phase 3: A better waiting room
 
@@ -90,4 +107,4 @@ Use a proper electronic medical record (EMR) system for any of these, never this
 
 ---
 
-**Suggested order:** Phase 1 first. Phases 2 and 3 give the most day-to-day value for the least risk. Phase 4 builds on the estimated wait from Phase 3. Phase 5 can run alongside any phase. Treat the boundary zone as a separate decision, not a default next step.
+**Suggested order:** Phase 2 is done; Phase 1 (going live) is next. Phase 3 gives the most day-to-day value for the least risk. Phase 4 builds on the estimated wait from Phase 3. Phase 5 can run alongside any phase. Treat the boundary zone as a separate decision, not a default next step.
