@@ -48,7 +48,9 @@
 
       async function loadQueue() {
         try {
-          const rooms = await (await fetch('/api/rooms', { cache: 'no-store' })).json();
+          // Rooms without a doctor (spare rooms) stay off the screen.
+          const rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).filter((r) => r.doctorId);
+          queueRoot.classList.toggle('two', rooms.length <= 2); // the usual day: big two-doctor layout
           queueRoot.classList.toggle('many', rooms.length > 3); // two rows: smaller numbers
           queueRoot.classList.toggle('three', rooms.length === 3 || rooms.length > 4); // 4 rooms stay 2x2
           queueRoot.innerHTML = rooms.map((r) => {
