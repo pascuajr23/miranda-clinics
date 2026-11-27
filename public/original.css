@@ -731,6 +731,8 @@ main { margin: 24px auto 32px; }
   body.queue-page .rooms.many .info strong { font-size: clamp(16px, 2.4vh, 38px); }
   body.queue-page .rooms.many .serving { padding: 0.8vh; margin-top: 0.8vh; }
   body.queue-page .rooms.many .queue-number { font-size: clamp(48px, 11vh, 180px); margin-top: 0; }
+  body.queue-page .rooms.three:not(.many) .room-card { container-type: inline-size; }
+  body.queue-page .rooms.three:not(.many) .queue-number { font-size: min(42vh, 46cqi); }
 }
 
 /* ---------- Header from mirandaclinics.com, shared by every page ---------- */
