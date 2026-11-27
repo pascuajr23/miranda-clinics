@@ -45,6 +45,14 @@ test('queue API: public read, protected writes, add/edit/delete rooms', async ()
     assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'sneaky', password: 'sneaky-pass' }, kath))).status, 403);
     assert.strictEqual((await fetch(`${base}/api/rooms/room2`, json('PATCH', { number: 0 }, cookie))).status, 200);
 
+    // A staff admin manages rooms and doctor logins, but not staff accounts.
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'boss2', password: 'boss-pass-1', role: 'admin' }, cookie))).status, 201);
+    const boss = await asUser('boss2', 'boss-pass-1');
+    assert.strictEqual((await fetch(`${base}/api/rooms/room1`, json('PATCH', { doctorId: 'kath' }, boss))).status, 200);
+    assert.strictEqual((await fetch(`${base}/api/rooms/room1`, json('PATCH', { doctorId: 'ken' }, boss))).status, 200);
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'drken', password: 'ken-pass-1', role: 'doctor', doctorIds: ['ken'] }, boss))).status, 201);
+    assert.strictEqual((await fetch(`${base}/api/users`, json('POST', { username: 'boss3', password: 'boss-pass-1', role: 'admin' }, boss))).status, 403);
+
     // The two Mirandas stay: no removal, and only their schedule changes.
     assert.strictEqual((await fetch(`${base}/api/doctors/ken`, { method: 'DELETE', headers: { cookie } })).status, 400);
     const ken = await (await fetch(`${base}/api/doctors/ken`, json('PATCH', { name: 'Someone else', schedule: 'Mon 9-12' }, cookie))).json();

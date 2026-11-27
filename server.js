@@ -328,8 +328,12 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'GET' && url.pathname === '/api/users') return send(res, 200, [publicUser(SUPER_ADMIN), ...site.users.map(publicUser)]);
 
+  // Admins may manage doctor logins only; staff and admin accounts are the super admin's.
+  const mayManage = (role) => user.superAdmin || role === 'doctor';
+
   if (req.method === 'POST' && url.pathname === '/api/users') {
     const input = await readJson(req);
+    if (!mayManage(input.role || 'staff')) return forbidden();
     if (!input.username || !input.password) return send(res, 400, { error: 'A username and password are required.' });
     const newUser = { id: crypto.randomUUID(), name: '', role: 'staff', doctorIds: [], ...validateUser(input) };
     site.users.push(newUser);
@@ -341,8 +345,11 @@ async function handleApi(req, res, url) {
   if (userMatch) {
     const target = site.users.find((u) => u.id === userMatch[1]);
     if (!target) return send(res, userMatch[1] === SUPER_ADMIN.id ? 400 : 404, { error: userMatch[1] === SUPER_ADMIN.id ? 'The super admin is set in the server settings (.env).' : 'User not found.' });
+    if (!mayManage(target.role)) return forbidden();
     if (req.method === 'PATCH') {
-      Object.assign(target, validateUser(await readJson(req), target));
+      const patch = validateUser(await readJson(req), target);
+      if (patch.role && !mayManage(patch.role)) return forbidden();
+      Object.assign(target, patch);
       saveSite();
       return send(res, 200, publicUser(target));
     }

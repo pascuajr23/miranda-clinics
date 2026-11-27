@@ -13,7 +13,7 @@ const roomListEl = document.getElementById('roomList');
 
 // Tabs (admins only); the hash keeps the tab across reloads.
 function showTab(name) {
-  if (me?.role !== 'admin' || !document.querySelector(`[data-panel="${name}"]`)) name = 'main';
+  if (me?.role !== 'admin' || !document.querySelector(`[data-panel="${name}"]`) || (name === 'staff' && !me.superAdmin)) name = 'main';
   document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('active', p.dataset.panel === name));
   document.querySelectorAll('[data-tab]').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   history.replaceState(null, '', name === 'main' ? location.pathname : `#${name}`);
@@ -22,6 +22,7 @@ document.querySelector('.tabs').addEventListener('click', (e) => e.target.datase
 
 const call = (method, path, body) => api(method, path, body, () => showLogin('Your session ended. Please sign in again.'));
 const ROLE_NAMES = { admin: 'Admin', staff: 'Staff', doctor: 'Doctor' };
+const STAFF_ROLES = [['staff', 'Staff'], ['admin', 'Admin']];
 
 function showLogin(message = '') {
   loginView.classList.remove('hidden');
@@ -37,6 +38,7 @@ async function showPanel(user) {
   document.body.classList.toggle('is-admin', user.role === 'admin');
   document.getElementById('greeting').textContent = `Hi, ${user.name || user.username}`;
   document.getElementById('passwordSection').hidden = Boolean(user.superAdmin); // super admin password lives in .env
+  document.querySelector('[data-tab="staff"]').hidden = !user.superAdmin; // only the super admin manages staff
   showTab(location.hash.slice(1));
   if (user.role === 'admin') await loadAdmin();
 }
@@ -118,7 +120,9 @@ function userCard(u) {
       <h2>${esc(u.name || u.username)} <span class="tag">${ROLE_NAMES[u.role]}</span></h2>
       <label>Name</label><input type="text" data-field="name" value="${esc(u.name)}" maxlength="80" />
       <label>Username</label><input type="text" data-field="username" value="${esc(u.username)}" maxlength="40" autocapitalize="none" />
-      ${u.role === 'admin' ? '<p class="hint">Admins run every room and manage doctors and users.</p>' : `
+      <label>Role</label>
+      <select data-field="role">${STAFF_ROLES.map(([v, n]) => `<option value="${v}"${v === u.role ? ' selected' : ''}>${n}</option>`).join('')}</select>
+      ${u.role === 'admin' ? '<p class="hint">Runs every room, sets up rooms, adds doctors and their logins.</p>' : `
         <label>Manages</label>
         <div class="checks">${checks}</div>
         <p class="hint">Runs the rooms of the ticked doctors.</p>`}
@@ -135,6 +139,8 @@ function renderUsers() {
       <label>Name</label><input type="text" name="name" maxlength="80" />
       <label>Username</label><input type="text" name="username" maxlength="40" autocapitalize="none" required />
       <label>Password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required />
+      <label>Role</label>
+      <select name="role">${STAFF_ROLES.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select>
       <button type="submit">Add staff</button>
     </form>`;
 }
@@ -289,7 +295,7 @@ usersEl.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.target;
   try {
-    const added = await call('POST', '/api/users', { ...Object.fromEntries(new FormData(form)), role: 'staff' });
+    const added = await call('POST', '/api/users', Object.fromEntries(new FormData(form)));
     users.push(added);
     renderUsers();
     toast(`${added.username} added. Tick the doctors they handle.`);
