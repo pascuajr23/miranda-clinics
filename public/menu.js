@@ -8,6 +8,7 @@
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'menu-toggle';
+  button.hidden = true; // hidden unless the phone-size CSS shows it, so an old cached stylesheet can't show it on desktop
   button.setAttribute('aria-controls', nav.id);
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-label', 'Menu');
