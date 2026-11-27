@@ -783,6 +783,7 @@ body.control-page .site-header { position: sticky; }
 /* Phones: logo only (menu and name hidden), as on mirandaclinics.com. Control keeps its Logout button. */
 /* Phones: logo, Login and a menu button on one row; the section links open as a panel under it. */
 .menu-toggle { display: none; }
+.menu-actions { display: none; }
 @media (max-width: 560px) {
   .site-header,
   body.queue-page .site-header,
@@ -794,6 +795,10 @@ body.control-page .site-header { position: sticky; }
   /* The panel floats over the page (absolute under the header) instead of pushing content down. */
   .site-header .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch; text-align: center; gap: 0; padding: 0 0.9rem 0.4rem; font-size: 1.05rem; background: #fff; box-shadow: 0 18px 30px rgba(17, 61, 84, 0.14); }
   .site-header.menu-open .nav-links { display: flex; }
+  .site-header .header-right > .login-btn { display: none; } /* shown inside the menu instead */
+  .site-header .menu-actions { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0 0.3rem; border-top: 1px solid rgba(21, 49, 63, 0.08); }
+  .site-header .menu-actions:empty { display: none; }
+  .site-header.menu-open .menu-actions .login-btn { display: block; text-align: center; padding: 0.8rem 1rem; border: 0; font: inherit; font-weight: 700; color: #fff; }
   .site-header .nav-links a { padding: 0.8rem 0.2rem; border-top: 1px solid rgba(21, 49, 63, 0.08); }
   .site-header.menu-open { transition: none; background: #fff; color: var(--text); box-shadow: 0 10px 30px rgba(17, 61, 84, 0.12); }
   .site-header.menu-open .nav-links a, .site-header.menu-open .brand-text { color: var(--text); }
