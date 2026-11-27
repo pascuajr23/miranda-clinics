@@ -8,6 +8,17 @@ const announcementForm = document.getElementById('announcementForm');
 let me = null;
 let doctors = [];
 let users = [];
+let rooms = [];
+const roomListEl = document.getElementById('roomList');
+
+// Tabs (admins only); the hash keeps the tab across reloads.
+function showTab(name) {
+  if (me?.role !== 'admin' || !document.querySelector(`[data-panel="${name}"]`)) name = 'main';
+  document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('active', p.dataset.panel === name));
+  document.querySelectorAll('[data-tab]').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  history.replaceState(null, '', name === 'main' ? location.pathname : `#${name}`);
+}
+document.querySelector('.tabs').addEventListener('click', (e) => e.target.dataset.tab && showTab(e.target.dataset.tab));
 
 const call = (method, path, body) => api(method, path, body, () => showLogin('Your session ended. Please sign in again.'));
 const ROLE_NAMES = { admin: 'Admin', staff: 'Staff', doctor: 'Doctor' };
@@ -26,20 +37,38 @@ async function showPanel(user) {
   document.body.classList.toggle('is-admin', user.role === 'admin');
   document.getElementById('greeting').textContent = `Hi, ${user.name || user.username}`;
   document.getElementById('passwordSection').hidden = Boolean(user.superAdmin); // super admin password lives in .env
+  showTab(location.hash.slice(1));
   if (user.role === 'admin') await loadAdmin();
 }
 
 async function loadAdmin() {
   try {
-    const [site, userList] = await Promise.all([call('GET', '/api/site'), call('GET', '/api/users')]);
+    const [site, userList, roomList] = await Promise.all([call('GET', '/api/site'), call('GET', '/api/users'), call('GET', '/api/rooms')]);
     doctors = site.doctors;
     users = userList;
+    rooms = roomList;
+    renderRooms();
     for (const key of ['title', 'details', 'hours']) announcementForm[key].value = site.announcement[key] || '';
     renderDoctors();
     renderUsers();
   } catch (error) {
     toast(error.message, true);
   }
+}
+
+// A doctor's login lives on their card; it controls whichever room the doctor is put in.
+function loginBlock(d) {
+  const u = users.find((x) => x.role === 'doctor' && x.doctorIds[0] === d.id);
+  if (u) return `
+    <div data-user="${esc(u.id)}">
+      <label>Login username</label><input type="text" data-ufield="username" value="${esc(u.username)}" maxlength="40" autocapitalize="none" />
+      <label>New password</label><input type="password" data-ufield="password" autocomplete="new-password" placeholder="Leave empty to keep" />
+      <button type="button" class="remove" data-action="delete-login">Remove login</button>
+    </div>`;
+  return `
+    <label>Login username</label><input type="text" data-new="username" maxlength="40" autocapitalize="none" placeholder="No login yet" />
+    <label>Password</label><input type="password" data-new="password" autocomplete="new-password" placeholder="At least 8 characters" />
+    <button type="button" data-action="create-login">Create login</button>`;
 }
 
 function doctorCard(d) {
@@ -51,6 +80,7 @@ function doctorCard(d) {
       <article class="room-card" data-id="${esc(d.id)}">
         <h2>${esc(d.name)} <span class="tag">Always listed</span></h2>
         ${schedule}
+        ${loginBlock(d)}
       </article>`;
   }
   return `
@@ -64,6 +94,7 @@ function doctorCard(d) {
       ${schedule}
       <label>Colour</label>
       <select data-field="color">${COLORS.map((c) => `<option value="${c}"${c === d.color ? ' selected' : ''}>${c}</option>`).join('')}</select>
+      ${loginBlock(d)}
       <button type="button" class="remove" data-action="delete">Remove doctor</button>
     </article>`;
 }
@@ -87,29 +118,77 @@ function userCard(u) {
       <h2>${esc(u.name || u.username)} <span class="tag">${ROLE_NAMES[u.role]}</span></h2>
       <label>Name</label><input type="text" data-field="name" value="${esc(u.name)}" maxlength="80" />
       <label>Username</label><input type="text" data-field="username" value="${esc(u.username)}" maxlength="40" autocapitalize="none" />
-      <label>Role</label>
-      <select data-field="role">${Object.entries(ROLE_NAMES).map(([v, n]) => `<option value="${v}"${v === u.role ? ' selected' : ''}>${n}</option>`).join('')}</select>
       ${u.role === 'admin' ? '<p class="hint">Admins run every room and manage doctors and users.</p>' : `
-        <label>${u.role === 'doctor' ? 'This login is for' : 'Manages'}</label>
+        <label>Manages</label>
         <div class="checks">${checks}</div>
-        <p class="hint">${u.role === 'doctor' ? 'Tick one doctor. They run only their own room.' : 'Runs the rooms of the ticked doctors.'}</p>`}
+        <p class="hint">Runs the rooms of the ticked doctors.</p>`}
       <label>New password</label><input type="password" data-field="password" autocomplete="new-password" placeholder="Leave empty to keep" />
       <button type="button" class="remove" data-action="delete">Remove user</button>
     </article>`;
 }
 
 function renderUsers() {
-  usersEl.innerHTML = users.map(userCard).join('') + `
+  // Doctor logins are managed on the Doctors tab.
+  usersEl.innerHTML = users.filter((u) => u.role !== 'doctor').map(userCard).join('') + `
     <form class="room-card" id="addUserForm">
-      <h2>Add a user</h2>
+      <h2>Add staff</h2>
       <label>Name</label><input type="text" name="name" maxlength="80" />
       <label>Username</label><input type="text" name="username" maxlength="40" autocapitalize="none" required />
       <label>Password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required />
-      <label>Role</label>
-      <select name="role">${Object.entries(ROLE_NAMES).map(([v, n]) => `<option value="${v}"${v === 'staff' ? ' selected' : ''}>${n}</option>`).join('')}</select>
-      <button type="submit">Add user</button>
+      <button type="submit">Add staff</button>
     </form>`;
 }
+
+function renderRooms() {
+  const standby = doctors.filter((d) => !rooms.some((r) => r.doctorId === d.id));
+  document.getElementById('standby').textContent = standby.length ? `On standby: ${standby.map((d) => d.name).join(', ')}` : 'Every doctor is in a room.';
+  roomListEl.innerHTML = rooms.map((r) => `
+    <article class="room-card" data-id="${esc(r.id)}">
+      <h2>${esc(r.name)}</h2>
+      <label>Doctor in this room</label>
+      <select data-field="doctorId"><option value="">No doctor</option>${doctors.map((d) => `<option value="${esc(d.id)}"${d.id === r.doctorId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}</select>
+      <p class="hint">Their login controls this room.</p>
+      <label>Room name</label><input type="text" data-field="name" value="${esc(r.name)}" maxlength="80" />
+      <label>Department</label><input type="text" data-field="department" value="${esc(r.department)}" maxlength="80" placeholder="e.g. Pediatrics" />
+      <label>Colour on the TV</label>
+      <select data-field="color">${COLORS.map((c) => `<option value="${c}"${c === r.color ? ' selected' : ''}>${c}</option>`).join('')}</select>
+      <button type="button" class="remove" data-action="delete">Remove room</button>
+    </article>`).join('') + '<button type="button" class="add-card" data-action="add">+ Add a room</button>';
+}
+
+roomListEl.addEventListener('change', async (event) => {
+  const field = event.target.dataset.field;
+  if (!field) return;
+  const id = event.target.closest('[data-id]').dataset.id;
+  try {
+    const updated = await call('PATCH', `/api/rooms/${id}`, { [field]: event.target.value });
+    rooms = rooms.map((r) => (r.id === id ? updated : r));
+    renderRooms();
+    toast('Saved');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+roomListEl.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+  try {
+    if (button.dataset.action === 'add') {
+      rooms.push(await call('POST', '/api/rooms', {}));
+      renderRooms();
+      return toast('Room added. Pick its doctor.');
+    }
+    const room = rooms.find((r) => r.id === button.closest('[data-id]').dataset.id);
+    if (!confirmTap(button, `Tap again to remove ${room.name}`)) return;
+    await call('DELETE', `/api/rooms/${room.id}`);
+    rooms = rooms.filter((r) => r !== room);
+    renderRooms();
+    toast(`${room.name} removed`);
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
 
 async function save(kind, id, patch) {
   try {
@@ -118,6 +197,7 @@ async function save(kind, id, patch) {
     else users = users.map((u) => (u.id === id ? updated : u));
     renderDoctors();
     renderUsers(); // user cards list doctor names
+    renderRooms();
     toast('Saved');
   } catch (error) {
     toast(error.message, true);
@@ -125,6 +205,8 @@ async function save(kind, id, patch) {
 }
 
 doctorsEl.addEventListener('change', (event) => {
+  const { ufield } = event.target.dataset;
+  if (ufield) return save('users', event.target.closest('[data-user]').dataset.user, { [ufield]: event.target.value });
   const field = event.target.dataset.field;
   if (!field) return;
   const value = field === 'services' ? event.target.value.split('\n').map((s) => s.trim()).filter(Boolean) : event.target.value;
@@ -140,17 +222,36 @@ doctorsEl.addEventListener('click', async (event) => {
       doctors.push(added);
       renderDoctors();
       renderUsers();
+      renderRooms();
       doctorsEl.querySelector(`[data-id="${CSS.escape(added.id)}"] [data-field="name"]`)?.select();
       return;
     }
-    const id = button.closest('[data-id]').dataset.id;
+    const card = button.closest('[data-id]');
+    const id = card.dataset.id;
     const doctor = doctors.find((d) => d.id === id);
+    if (button.dataset.action === 'create-login') {
+      const value = (k) => card.querySelector(`[data-new="${k}"]`).value;
+      users.push(await call('POST', '/api/users', { name: doctor.name, username: value('username').trim(), password: value('password'), role: 'doctor', doctorIds: [id] }));
+      renderDoctors();
+      return toast(`Login created for ${doctor.name}`);
+    }
+    if (button.dataset.action === 'delete-login') {
+      const userId = button.closest('[data-user]').dataset.user;
+      if (!confirmTap(button, 'Tap again to remove login')) return;
+      await call('DELETE', `/api/users/${userId}`);
+      users = users.filter((u) => u.id !== userId);
+      renderDoctors();
+      return toast('Login removed');
+    }
     if (!confirmTap(button, `Tap again to remove ${doctor.name}`)) return;
     await call('DELETE', `/api/doctors/${id}`);
+    users = users.filter((u) => !(u.role === 'doctor' && u.doctorIds[0] === id)); // the server removed their login too
     doctors = doctors.filter((d) => d.id !== id);
     users = users.map((u) => ({ ...u, doctorIds: u.doctorIds.filter((x) => x !== id) }));
+    rooms = rooms.map((r) => (r.doctorId === id ? { ...r, doctorId: '', doctor: '' } : r));
     renderDoctors();
     renderUsers();
+    renderRooms();
     toast(`${doctor.name} removed`);
   } catch (error) {
     toast(error.message, true);
@@ -188,7 +289,7 @@ usersEl.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.target;
   try {
-    const added = await call('POST', '/api/users', Object.fromEntries(new FormData(form)));
+    const added = await call('POST', '/api/users', { ...Object.fromEntries(new FormData(form)), role: 'staff' });
     users.push(added);
     renderUsers();
     toast(`${added.username} added. Tick the doctors they handle.`);

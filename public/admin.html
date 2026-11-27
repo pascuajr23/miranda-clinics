@@ -14,6 +14,13 @@
       .go-control:hover { background: #0f3446; }
       .quick-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
       .admin-section { margin-top: 3rem; }
+      .tabs { display: none; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 0 0 2rem; }
+      body.is-admin .tabs { display: flex; }
+      .tabs button { border: 1px solid #d2dce8; background: #fff; color: #133f54; border-radius: 999px; padding: 0.6rem 1.2rem; font: inherit; font-weight: 600; cursor: pointer; }
+      .tabs button.active { background: #133f54; border-color: #133f54; color: #fff; }
+      [data-panel] { display: none; }
+      [data-panel].active { display: block; }
+      .standby { text-align: center; color: #475569; margin: 0 0 1.5rem; }
       .admin-section > h2 { color: #0f172a; margin: 0 0 1rem; }
       .room-card input[type="password"], .room-card textarea, .room-card select { width: 100%; padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid #d2dce8; background: #f8fafc; color: #102a43; font: inherit; }
       .room-card textarea { min-height: 96px; resize: vertical; }
@@ -27,8 +34,6 @@
       .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; background: #0f172a; color: #fff; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 2000; }
       .toast.show { opacity: 1; }
       .toast.error { background: #b33636; }
-      [data-admin-only] { display: none; }
-      body.is-admin [data-admin-only] { display: block; }
     </style>
   </head>
   <body class="control-page">
@@ -69,42 +74,54 @@
           <h1 id="greeting">Admin</h1>
         </section>
 
-        <a class="go-control" href="/control">
-          <strong>Queue control</strong>
-          <span id="controlHint">Call numbers and set doctor in or out</span>
-        </a>
-        <div class="quick-links">
-          <a class="login-btn" href="/queue" target="_blank" rel="noopener">Open TV display</a>
+        <nav class="tabs" data-admin-only>
+          <button type="button" data-tab="main">Main</button>
+          <button type="button" data-tab="announcement">Announcement</button>
+          <button type="button" data-tab="doctors">Doctors</button>
+          <button type="button" data-tab="rooms">Rooms</button>
+          <button type="button" data-tab="staff">Staff</button>
+        </nav>
+
+        <div data-panel="main">
+          <a class="go-control" href="/control">
+            <strong>Queue control</strong>
+            <span>Call numbers and set doctor in or out</span>
+          </a>
+          <div class="quick-links">
+            <a class="login-btn" href="/queue" target="_blank" rel="noopener">Open TV display</a>
+          </div>
+
+          <section class="admin-section" id="passwordSection">
+            <h2>Your password</h2>
+            <form class="room-card" id="passwordForm">
+              <label>Current password</label><input type="password" name="current" autocomplete="current-password" required />
+              <label>New password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required />
+              <button type="submit">Change password</button>
+            </form>
+          </section>
         </div>
 
-        <section class="admin-section" data-admin-only>
-          <h2>Announcement</h2>
+        <div data-panel="announcement">
           <form class="room-card" id="announcementForm">
             <label>Title</label><input type="text" name="title" maxlength="200" />
             <label>Details</label><input type="text" name="details" maxlength="200" />
             <label>Hours</label><input type="text" name="hours" maxlength="200" />
             <button type="submit">Save announcement</button>
           </form>
-        </section>
+        </div>
 
-        <section class="admin-section" data-admin-only>
-          <h2>Doctors</h2>
+        <div data-panel="doctors">
           <div class="rooms-grid" id="doctors"></div>
-        </section>
+        </div>
 
-        <section class="admin-section" data-admin-only>
-          <h2>Users</h2>
+        <div data-panel="rooms">
+          <p class="standby" id="standby"></p>
+          <div class="rooms-grid" id="roomList"></div>
+        </div>
+
+        <div data-panel="staff">
           <div class="rooms-grid" id="users"></div>
-        </section>
-
-        <section class="admin-section" id="passwordSection">
-          <h2>Your password</h2>
-          <form class="room-card" id="passwordForm">
-            <label>Current password</label><input type="password" name="current" autocomplete="current-password" required />
-            <label>New password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required />
-            <button type="submit">Change password</button>
-          </form>
-        </section>
+        </div>
       </main>
     </div>
 

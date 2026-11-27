@@ -317,6 +317,7 @@ async function handleApi(req, res, url) {
     if (req.method === 'DELETE') {
       if (doctor.fixed) return send(res, 400, { error: `${doctor.name} can’t be removed.` });
       site.doctors = site.doctors.filter((d) => d !== doctor);
+      site.users = site.users.filter((u) => !(u.role === 'doctor' && u.doctorIds.includes(doctor.id))); // their login goes too
       for (const u of site.users) u.doctorIds = u.doctorIds.filter((id) => id !== doctor.id);
       for (const r of rooms) if (r.doctorId === doctor.id) r.doctorId = '';
       saveSite();

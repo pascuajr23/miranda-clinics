@@ -160,7 +160,7 @@
       fetch('/api/site').then((r) => r.json()).then(({ doctors, announcement }) => {
         const about = document.getElementById('doctorCards');
         const family = about.lastElementChild.outerHTML;
-        about.innerHTML = doctors.map((d) => `
+        about.innerHTML = doctors.filter((d) => d.fixed).map((d) => `
           <article class="card card--doctor card--${d.color === 'green' ? 'kath' : 'ken'}">
             ${d.photo ? `<div class="doctor-photo"><img src="${esc(d.photo)}" alt="${esc(d.name)}" loading="lazy" /></div>` : ''}
             <h3>${esc(d.name)}</h3>

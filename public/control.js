@@ -2,7 +2,6 @@ const roomsEl = document.getElementById('rooms');
 const panelView = document.getElementById('panelView');
 
 let rooms = [];
-let doctors = [];
 let me = null;
 
 const pad = (n) => String(n).padStart(3, '0');
@@ -14,13 +13,11 @@ const mine = (list) => (isAdmin() ? list : list.filter((r) => r.doctorId && me.d
 async function showPanel() {
   panelView.classList.remove('hidden');
   document.getElementById('resetAllBtn').textContent = isAdmin() ? 'Reset all to 000' : 'Reset my rooms to 000';
-  if (isAdmin()) doctors = (await call('GET', '/api/site')).doctors;
   await refresh(true);
 }
 
-function roomCard(r, detailsOpen) {
+function roomCard(r) {
   // Original control panel markup (classes from original.css); "room" + data-* hooks drive the handlers below.
-  const color = r.color || 'blue';
   return `
     <article class="room-card room" data-id="${esc(r.id)}">
       <h2>${esc(r.name)}${r.department ? ' · ' + esc(r.department) : ''}</h2>
@@ -43,26 +40,13 @@ function roomCard(r, detailsOpen) {
         <input name="number" type="number" min="0" max="9999" placeholder="Enter new number" required />
         <button type="submit">Override</button>
       </form>
-      ${isAdmin() ? `<details class="details"${detailsOpen ? ' open' : ''}>
-        <summary>Edit room details</summary>
-        <label>Room name</label><input type="text" data-field="name" value="${esc(r.name)}" maxlength="80" />
-        <label>Department</label><input type="text" data-field="department" value="${esc(r.department)}" maxlength="80" placeholder="e.g. Pediatrics" />
-        <label>Doctor</label>
-        <select data-field="doctorId"><option value="">No doctor</option>${doctors.map((d) => `<option value="${esc(d.id)}"${d.id === r.doctorId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}</select>
-        <label>Colour on the TV</label>
-        <select data-field="color">${COLORS.map((c) => `<option value="${c}"${c === color ? ' selected' : ''}>${c}</option>`).join('')}</select>
-        <button type="button" data-action="reset">Reset to 000</button>
-        <button type="button" class="remove" data-action="delete">Remove room</button>
-      </details>` : ''}
     </article>`;
 }
 
-function render(openIds = []) {
-  // Keep any "Edit room details" panels open across re-renders.
-  const open = new Set([...openIds, ...[...roomsEl.querySelectorAll('details[open]')].map((d) => d.closest('.room').dataset.id)]);
-  roomsEl.innerHTML = rooms.map((r) => roomCard(r, open.has(r.id))).join('') +
-    (isAdmin() ? '<button type="button" class="add-room" data-action="add">+ Add a room</button>' : '') ||
-    '<p>No rooms are assigned to you yet. Ask the admin to link your login to a doctor.</p>';
+// Room setup (name, doctor, colour, add/remove) lives in Admin → Rooms.
+function render() {
+  roomsEl.innerHTML = rooms.map(roomCard).join('') ||
+    (isAdmin() ? '<p>No rooms yet. Add them in Admin → Rooms.</p>' : '<p>No room is assigned to you yet. Ask the admin to put your doctor in a room.</p>');
 }
 
 async function refresh(force = false) {
@@ -97,34 +81,11 @@ roomsEl.addEventListener('click', async (event) => {
   const id = event.target.closest('.room')?.dataset.id;
   const room = rooms.find((r) => r.id === id);
 
-  if (action === 'add') {
-    try {
-      const added = await call('POST', '/api/rooms', {});
-      rooms.push(added);
-      render([added.id]);
-      toast('Room added. Pick the doctor and department.');
-    } catch (error) {
-      toast(error.message, true);
-    }
-    return;
-  }
   if (!room) return;
 
   if (action === 'next') updateRoom(id, { number: room.number + 1 }, (r) => `${r.name}: now serving ${pad(r.number)}`);
   if (action === 'prev') updateRoom(id, { number: Math.max(room.number - 1, 0) }, (r) => `${r.name}: back to ${pad(r.number)}`);
-  if (action === 'reset') updateRoom(id, { number: 0 }, (r) => `${r.name} reset to 000`);
-  if (action === 'toggle')updateRoom(id, { doctorIn: !room.doctorIn }, (r) => `${r.doctor || r.name} is ${r.doctorIn ? 'in' : 'out'}`);
-  if (action === 'delete') {
-    if (!confirmTap(event.target.closest('[data-action]'), `Tap again to remove ${room.name}`)) return;
-    try {
-      await call('DELETE', `/api/rooms/${id}`);
-      rooms = rooms.filter((r) => r.id !== id);
-      render();
-      toast(`${room.name} removed`);
-    } catch (error) {
-      toast(error.message, true);
-    }
-  }
+  if (action === 'toggle') updateRoom(id, { doctorIn: !room.doctorIn }, (r) => `${r.doctor || r.name} is ${r.doctorIn ? 'in' : 'out'}`);
 });
 
 roomsEl.addEventListener('submit', (event) => {
@@ -133,14 +94,6 @@ roomsEl.addEventListener('submit', (event) => {
   const number = Number(event.target.number.value);
   if (!Number.isInteger(number) || number < 0) return toast('Enter a whole number, 0 or more.', true);
   updateRoom(id, { number }, (r) => `${r.name}: now serving ${pad(r.number)}`);
-});
-
-// Text fields save when you leave them (or press Enter).
-roomsEl.addEventListener('change', (event) => {
-  const field = event.target.dataset.field;
-  if (!field) return;
-  const id = event.target.closest('.room').dataset.id;
-  updateRoom(id, { [field]: event.target.value }, () => 'Saved');
 });
 
 document.getElementById('resetAllBtn').addEventListener('click', async (event) => {
