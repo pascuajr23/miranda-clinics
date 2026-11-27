@@ -50,6 +50,8 @@ const STAFF_ROLES = [['staff', 'Staff'], ['admin', 'Admin']];
 function showLogin(message = '') {
   loginView.classList.remove('hidden');
   panelView.classList.add('hidden');
+  document.getElementById('homeBtn').classList.remove('hidden-btn');
+  document.getElementById('logoutBtn').classList.add('hidden-btn');
   document.getElementById('loginError').textContent = message;
   loginForm.username.focus();
 }
@@ -58,6 +60,8 @@ async function showPanel(user) {
   me = user;
   loginView.classList.add('hidden');
   panelView.classList.remove('hidden');
+  document.getElementById('homeBtn').classList.add('hidden-btn');
+  document.getElementById('logoutBtn').classList.remove('hidden-btn');
   document.body.classList.toggle('is-admin', user.role === 'admin');
   document.getElementById('greeting').textContent = `Hi, ${user.name || user.username}`;
   document.getElementById('passwordSection').hidden = Boolean(user.superAdmin); // super admin password lives in .env
