@@ -18,6 +18,17 @@ Anything that needs real patient data (records, results, prescriptions, bookings
 
 ---
 
+## Where things stand (27 Nov 2026)
+
+| Phase | Status |
+|---|---|
+| 1. Launch and trust | In progress: privacy notice, licence and image speed-ups done; deploy and backups still to do |
+| 2. Run the clinic from the admin panel | Done |
+| 3 to 5 | Proposed |
+| 6 to 11 (new) | Proposed |
+
+Also done along the way: a two-doctor TV layout with numbers sized for elderly patients across the hall, both doctors on one phone screen, a phone menu, accessibility fixes (labelled fields, contrast, keyboard tabs), WebP images and a self-hosted hero photo.
+
 ## Phase 1: Launch and trust (now)
 
 Get the current site live and dependable.
@@ -26,7 +37,9 @@ Get the current site live and dependable.
 - **Change the admin password** (the current one has been shared in chat).
 - **Back up** the `miranda-data` volume (rooms only, no patient data) on a schedule.
 - **Uptime check:** a free monitor that alerts the clinic if the site or TV page goes down.
-- **Privacy notice page** stating plainly that the site collects no patient information. Short, and true by design.
+- ~~**Privacy notice page**~~ Done: `/privacy`, under RA 10173, linked from the footer and the login screen.
+- ~~**Licence**~~ Done: MIT for the code; photos, logo, content and data stay the clinic's (NOTICE.md).
+- **Self-host the Inter font** so visitors' browsers no longer contact Google (one less thing in the privacy notice).
 - **Search basics:** page titles and descriptions, `MedicalClinic` structured data (address, hours, phone) so Google shows the clinic correctly, and a link to the Google Business Profile.
 
 ## Phase 2: Run the clinic from the admin panel (done)
@@ -87,6 +100,76 @@ Answer common questions so the front desk gets fewer calls.
 - **Filipino and English** versions of the main pages.
 - **FAQ** built from the questions the front desk hears most.
 
+## Phase 6: Reliable every day (proposed)
+
+Make the system boring in the best way: it just keeps working.
+
+- **Logins that survive a restart:** keep sessions in the data folder so an update doesn't sign everyone out.
+- **Backup and restore from the admin panel:** download all clinic settings (doctors, rooms, staff, closures) as one file, and restore it on a new server.
+- **TV that heals itself:** the TV page reloads on its own after an update and shows "Reconnecting…" if the server is unreachable, instead of stale numbers with no warning.
+- **Health check page** for the uptime monitor, so an alert fires before the clinic notices.
+- **Two-step login for admins (optional):** a code from an authenticator app on top of the password.
+
+Risk: none for patients. Staff accounts only.
+
+## Phase 7: Easier for every patient (proposed)
+
+Built around elderly patients, parents with children, and visitors who read Filipino more easily.
+
+- **Spoken announcements in Filipino and English:** "Numero labindalawa, Internal Medicine" with a soft chime, numbers only.
+- **Large-text mode** for the phone queue and website, one tap, remembered on that phone.
+- **Colour-blind-safe rooms:** each room also gets a letter or shape (A / B), not just blue and green.
+- **Clear "your turn is next" moment on the TV:** the number pulses briefly when it changes, so people looking away still notice.
+- **Readable on old phones and slow data:** a lightweight queue page that loads on 3G.
+
+Risk: none. No personal data.
+
+## Phase 8: The clinic online (proposed)
+
+Help new families find and trust the clinic.
+
+- **Map and directions** with the exact pin, parking notes and landmarks near Bella Vista.
+- **Google Business Profile and Facebook links**, with opening hours kept in sync from the admin panel (the schedules already live there).
+- **Clinic photo gallery:** waiting area, rooms, entrance. Never patients.
+- **Doctor profiles:** training, specialties and memberships, written by the doctors.
+- **Health tips page** the doctors can post to from the admin panel: seasonal reminders, vaccine drives, clinic news.
+
+Risk: low. Only clinic and doctor information, published by the doctors.
+
+## Phase 9: Running the clinic behind the scenes (proposed)
+
+Tools for staff that use clinic data only, never patient data.
+
+- **Vaccine and supplies stock:** counts per item with a low-stock warning on the admin panel. It stores stock, not who received it.
+- **Price list** for consultations, vaccines and certificates, editable once and shown on the website (links with Phase 5).
+- **Opening and closing checklist** for the secretary, ticked each day.
+- **Staff notice board:** short internal messages ("Lab courier at 3 PM") shown only after login.
+- **Staff schedule:** who is on duty each day.
+
+Risk: low. Staff and stock information only; keep it behind logins.
+
+## Phase 10: Numbers that help the doctors plan (proposed)
+
+Anonymous totals from the queue, to plan hours and staff. Builds on the daily totals in Phase 3.
+
+- **Monthly view:** patients per day and per doctor, busiest days and hours, as a simple chart.
+- **Average wait** per doctor and by time of day.
+- **Effect of closures and Sunday openings** on the following days.
+- **Export to a spreadsheet** for the clinic's own records.
+
+Risk: none, as long as it stays counts and timestamps of numbers, never linked to a person.
+
+## Phase 11: Growing the clinic (proposed)
+
+Only when the clinic needs it.
+
+- **More doctors and rooms on the TV:** the three- and four-room layouts already exist; tune them the way the two-doctor view was tuned.
+- **A second branch:** each branch with its own rooms, TV and staff, managed from one admin panel.
+- **Per-room or per-floor TV screens** (`/queue?room=…`), already listed in Phase 3.
+- **Visiting-doctor calendar:** which visiting doctor comes on which days, shown on the website.
+
+Risk: none extra; the same numbers-only rules apply to every branch.
+
 ## Boundary zone: only with care
 
 These touch personal (not health) data. Each is possible but needs a privacy notice, consent and a deletion policy before building.
@@ -107,4 +190,13 @@ Use a proper electronic medical record (EMR) system for any of these, never this
 
 ---
 
-**Suggested order:** Phase 2 is done; Phase 1 (going live) is next. Phase 3 gives the most day-to-day value for the least risk. Phase 4 builds on the estimated wait from Phase 3. Phase 5 can run alongside any phase. Treat the boundary zone as a separate decision, not a default next step.
+**Suggested order:**
+
+1. **Finish Phase 1** (go live with HTTPS, a new password and backups).
+2. **Phase 6** right after, so the live site stays up and recoverable.
+3. **Phase 3 and Phase 7 together:** the waiting room gets sound, estimated waits and the accessibility touches that matter most to elderly patients.
+4. **Phase 5 and Phase 8** whenever there's time; they're mostly writing, and can run alongside anything.
+5. **Phase 4, 9 and 10** once the basics are settled. Phase 4 builds on Phase 3's estimated wait; Phase 10 builds on its daily totals.
+6. **Phase 11** only when a new doctor, room or branch actually needs it.
+
+Treat the boundary zone as a separate decision, not a default next step.
