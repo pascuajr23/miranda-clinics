@@ -875,7 +875,7 @@ body.queue-page .rooms.two .serving small { letter-spacing: 0.18em; font-weight:
   body.queue-page .rooms.two .serving { margin-top: 2vh; padding: 2vh 1vw; }
   body.queue-page .rooms.two .serving small { font-size: clamp(16px, 2.6vh, 38px); }
   /* Use the whole TV width, not the 1200px page width. */
-  body.queue-page main:has(.rooms.two) { width: 95vw; }
+  body.queue-page main:has(.rooms.two, .rooms.three) { width: 95vw; }
   /* Three digits fill the card: limited by the card's width (cqi) and the screen height. */
   body.queue-page .rooms.two .room-card { container-type: inline-size; }
   body.queue-page .rooms.two .queue-number { font-size: 19vw; font-size: min(40vh, 19vw); font-size: min(42vh, 46cqi); }
