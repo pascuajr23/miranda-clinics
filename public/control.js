@@ -21,18 +21,17 @@ function roomCard(r) {
   // Original control panel markup (classes from original.css); "room" + data-* hooks drive the handlers below.
   return `
     <article class="room-card room" data-id="${esc(r.id)}">
-      <h2>${esc(r.name)}${r.department ? ' · ' + esc(r.department) : ''}</h2>
-      <label>Current Number</label>
-      <input type="text" readonly value="${pad(r.number)}" aria-label="Current number" />
-      <label>Doctor</label>
-      <input type="text" readonly value="${esc(r.doctor)}" />
-      <div class="doctor-status-row">
-        <span class="doctor-status-label">Doctor status</span>
+      <div class="doctor-card-header">
+        <h2>${esc(r.name)}${r.department ? ' · ' + esc(r.department) : ''}</h2>
         <button type="button" class="doctor-toggle${r.doctorIn ? ' is-active' : ''}" aria-pressed="${r.doctorIn}" data-action="toggle">
           <span class="doctor-toggle__dot"></span>
           <span class="doctor-toggle__label">${r.doctorIn ? 'Doctor In' : 'Doctor Out'}</span>
         </button>
       </div>
+      <label>Current Number</label>
+      <input type="text" readonly value="${pad(r.number)}" aria-label="Current number" />
+      <label>Doctor</label>
+      <input type="text" readonly value="${esc(r.doctor)}" />
       <div class="button-row">
         <button type="button" data-action="prev">-1</button>
         <button type="button" data-action="next">+1</button>
