@@ -63,7 +63,7 @@ async function showPanel(user) {
   document.getElementById('homeBtn').classList.add('hidden-btn');
   document.getElementById('logoutBtn').classList.remove('hidden-btn');
   document.body.classList.toggle('is-admin', user.role === 'admin');
-  document.getElementById('greeting').textContent = `Hi, ${user.name || user.username}`;
+  document.getElementById('greeting').textContent = user.superAdmin ? 'Hi, Doc Ken' : `Hi, ${user.name || user.username}`;
   document.getElementById('passwordSection').hidden = Boolean(user.superAdmin); // super admin password lives in .env
   document.querySelector('[data-tab="staff"]').hidden = !user.superAdmin; // only the super admin manages staff
   showTab(location.hash.slice(1));
