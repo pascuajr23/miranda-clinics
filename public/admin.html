@@ -32,6 +32,8 @@
       .room-card textarea { min-height: 96px; resize: vertical; }
       .room-card .hint { margin: 0.3rem 0 0; color: #64748b; font-size: 0.9rem; }
       .room-card .checks { display: grid; gap: 6px; }
+      .room-card .group-label { display: block; margin: 1rem 0 0.45rem; color: #475569; font-weight: 600; }
+      .room-card h2, .plain-list span { overflow-wrap: anywhere; min-width: 0; }
       .room-card .checks label { display: flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
       .room-card .checks input { width: auto; flex: none; margin: 0; }
       .room-card .remove { background: transparent !important; color: #b33636 !important; box-shadow: none !important; }
@@ -80,17 +82,17 @@
           <h1 id="greeting">Admin</h1>
         </section>
 
-        <nav class="tabs" data-admin-only>
-          <button type="button" data-tab="main">Main</button>
-          <button type="button" data-tab="announcement">Announcement</button>
-          <button type="button" data-tab="doctors">Doctors</button>
-          <button type="button" data-tab="rooms">Rooms</button>
-          <button type="button" data-tab="closures">Closures</button>
-          <button type="button" data-tab="staff">Staff</button>
-          <button type="button" data-tab="activity">Activity</button>
+        <nav class="tabs" role="tablist" aria-label="Admin sections" data-admin-only>
+          <button type="button" role="tab" id="tab-main" aria-controls="panel-main" data-tab="main">Main</button>
+          <button type="button" role="tab" id="tab-announcement" aria-controls="panel-announcement" data-tab="announcement">Announcement</button>
+          <button type="button" role="tab" id="tab-doctors" aria-controls="panel-doctors" data-tab="doctors">Doctors</button>
+          <button type="button" role="tab" id="tab-rooms" aria-controls="panel-rooms" data-tab="rooms">Rooms</button>
+          <button type="button" role="tab" id="tab-closures" aria-controls="panel-closures" data-tab="closures">Closures</button>
+          <button type="button" role="tab" id="tab-staff" aria-controls="panel-staff" data-tab="staff">Staff</button>
+          <button type="button" role="tab" id="tab-activity" aria-controls="panel-activity" data-tab="activity">Activity</button>
         </nav>
 
-        <div data-panel="main">
+        <div data-panel="main" role="tabpanel" id="panel-main" aria-labelledby="tab-main">
           <a class="go-control" href="/control">
             <strong>Queue control</strong>
             <span>Call numbers and set doctor in or out</span>
@@ -109,7 +111,7 @@
           </section>
         </div>
 
-        <div data-panel="announcement">
+        <div data-panel="announcement" role="tabpanel" id="panel-announcement" aria-labelledby="tab-announcement">
           <form class="room-card" id="announcementForm">
             <label>Title</label><input type="text" name="title" maxlength="200" />
             <label>Details</label><input type="text" name="details" maxlength="200" />
@@ -118,16 +120,16 @@
           </form>
         </div>
 
-        <div data-panel="doctors">
+        <div data-panel="doctors" role="tabpanel" id="panel-doctors" aria-labelledby="tab-doctors">
           <div class="rooms-grid" id="doctors"></div>
         </div>
 
-        <div data-panel="rooms">
+        <div data-panel="rooms" role="tabpanel" id="panel-rooms" aria-labelledby="tab-rooms">
           <p class="standby" id="standby"></p>
           <div class="rooms-grid" id="roomList"></div>
         </div>
 
-        <div data-panel="closures">
+        <div data-panel="closures" role="tabpanel" id="panel-closures" aria-labelledby="tab-closures">
           <form class="room-card" id="closureForm">
             <label>Closed on</label><input type="date" name="date" required />
             <label>Note</label><input type="text" name="note" maxlength="80" placeholder="e.g. Christmas Day" />
@@ -136,11 +138,11 @@
           <ul class="plain-list" id="closureList"></ul>
         </div>
 
-        <div data-panel="activity">
+        <div data-panel="activity" role="tabpanel" id="panel-activity" aria-labelledby="tab-activity">
           <ul class="plain-list" id="activityList"></ul>
         </div>
 
-        <div data-panel="staff">
+        <div data-panel="staff" role="tabpanel" id="panel-staff" aria-labelledby="tab-staff">
           <div class="rooms-grid" id="users"></div>
         </div>
       </main>

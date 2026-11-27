@@ -33,3 +33,17 @@ function confirmTap(button, prompt) {
   setTimeout(() => { delete button.dataset.armed; button.textContent = original; }, 4000);
   return false;
 }
+
+// Ties each <label> to the field right after it (for/id), so screen readers and taps on the label work.
+// Runs on every render instead of hand-writing ids in each template.
+let fieldSeq = 0;
+function linkLabels(root = document) {
+  for (const label of root.querySelectorAll('label:not([for])')) {
+    const field = label.nextElementSibling;
+    if (!field || !field.matches('input, select, textarea') || label.contains(field)) continue;
+    field.id ||= `f${++fieldSeq}`;
+    label.htmlFor = field.id;
+  }
+}
+new MutationObserver(() => linkLabels()).observe(document.documentElement, { childList: true, subtree: true });
+document.addEventListener('DOMContentLoaded', () => linkLabels());

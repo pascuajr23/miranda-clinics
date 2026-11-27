@@ -18,12 +18,24 @@ const roomListEl = document.getElementById('roomList');
 function showTab(name) {
   if (me?.role !== 'admin' || !document.querySelector(`[data-panel="${name}"]`) || (name === 'staff' && !me.superAdmin)) name = 'main';
   document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('active', p.dataset.panel === name));
-  document.querySelectorAll('[data-tab]').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('[data-tab]').forEach((t) => {
+    t.classList.toggle('active', t.dataset.tab === name);
+    t.setAttribute('aria-selected', String(t.dataset.tab === name));
+    t.tabIndex = t.dataset.tab === name ? 0 : -1; // arrow keys move between tabs
+  });
   history.replaceState(null, '', name === 'main' ? location.pathname : `#${name}`);
 }
 window.addEventListener('hashchange', () => {
   showTab(location.hash.slice(1));
   if (location.hash === '#activity') loadActivity();
+});
+// Left/right arrows move between tabs (standard tablist keyboard pattern).
+document.querySelector('.tabs').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const tabs = [...document.querySelectorAll('[data-tab]:not([hidden])')];
+  const next = tabs[(tabs.indexOf(document.activeElement) + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+  next.focus();
+  next.click();
 });
 document.querySelector('.tabs').addEventListener('click', (e) => {
   if (!e.target.dataset.tab) return;
@@ -137,8 +149,8 @@ function userCard(u) {
       <label>Role</label>
       <select data-field="role">${STAFF_ROLES.map(([v, n]) => `<option value="${v}"${v === u.role ? ' selected' : ''}>${n}</option>`).join('')}</select>
       ${u.role === 'admin' ? '<p class="hint">Runs every room, sets up rooms, adds doctors and their logins.</p>' : `
-        <label>Manages</label>
-        <div class="checks">${checks}</div>
+        <p class="group-label" id="manages-${esc(u.id)}">Manages</p>
+        <div class="checks" role="group" aria-labelledby="manages-${esc(u.id)}">${checks}</div>
         <p class="hint">Runs the rooms of the ticked doctors.</p>`}
       <label>New password</label><input type="password" data-field="password" autocomplete="new-password" placeholder="Leave empty to keep" />
       <button type="button" class="remove" data-action="delete">Remove user</button>

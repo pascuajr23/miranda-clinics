@@ -3,6 +3,7 @@ const panelView = document.getElementById('panelView');
 
 let rooms = [];
 let me = null;
+let offline = false;
 
 const pad = (n) => String(n).padStart(3, '0');
 const call = (method, path, body) => api(method, path, body, () => location.assign('/admin'));
@@ -37,7 +38,7 @@ function roomCard(r) {
         <button type="button" data-action="next">+1</button>
       </div>
       <form class="override-row" data-action="set">
-        <input name="number" type="number" min="0" max="9999" placeholder="Enter new number" required />
+        <input name="number" type="number" min="0" max="9999" placeholder="Enter new number" aria-label="New number" required />
         <button type="submit">Override</button>
       </form>
       <form class="override-row" data-action="message">
@@ -58,11 +59,14 @@ async function refresh(force = false) {
   if (!force && roomsEl.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
   try {
     const latest = mine(await call('GET', '/api/rooms'));
+    if (offline) { offline = false; toast('Back online'); }
     if (!force && JSON.stringify(latest) === JSON.stringify(rooms)) return;
     rooms = latest;
     render();
   } catch (error) {
-    toast(error.message, true);
+    // Polls every 5 s: say it once, keep the last numbers on screen, and keep retrying.
+    if (!offline) toast(navigator.onLine ? `Can't reach the server. Retrying…` : 'You are offline. Retrying…', true);
+    offline = true;
   }
 }
 
